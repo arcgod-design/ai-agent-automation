@@ -548,6 +548,83 @@ ${rawOutput}
       };
     }
 
+    // ----- GITHUB -----
+    if (step.type === "github") {
+      try {
+        const output = await runGitHub(step, context, interpolate);
+        return {
+          stepId: step.stepId || null,
+          type: "github",
+          tool: "github",
+          input: { action: step.action },
+          output,
+          success: true,
+          timestamp: new Date(),
+        };
+      } catch (err) {
+        return {
+          stepId: step.stepId || null,
+          type: "github",
+          tool: "github",
+          input: { action: step.action },
+          output: err.message,
+          success: false,
+          timestamp: new Date(),
+        };
+      }
+    }
+
+    // ----- SLACK -----
+    if (step.type === "slack") {
+      try {
+        const output = await runSlack(step, context, interpolate);
+        return {
+          stepId: step.stepId || null,
+          type: "slack",
+          tool: "slack",
+          input: { action: step.action },
+          output,
+          success: true,
+          timestamp: new Date(),
+        };
+      } catch (err) {
+        return {
+          stepId: step.stepId || null,
+          type: "slack",
+          tool: "slack",
+          input: { action: step.action },
+          output: err.message,
+          success: false,
+          timestamp: new Date(),
+        };
+      }
+    }
+    // ----- DISCORD -----
+    if (step.type === "discord") {
+      try {
+        const output = await runDiscord(step, context, interpolate);
+        return {
+          stepId: step.stepId || null,
+          type: "discord",
+          tool: "discord",
+          input: { action: step.action },
+          output,
+          success: true,
+          timestamp: new Date(),
+        };
+      } catch (err) {
+        return {
+          stepId: step.stepId || null,
+          type: "discord",
+          tool: "discord",
+          input: { action: step.action },
+          output: err.message,
+          success: false,
+          timestamp: new Date(),
+        };
+      }
+    }
+
     // unknown step type
     return {
       stepId: step.stepId || null,
