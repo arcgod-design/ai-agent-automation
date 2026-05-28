@@ -871,11 +871,11 @@ export default function WorkflowBuilderPage() {
                             <Label>Step Type</Label>
                             <Select
                               value={step.type}
-                              onValueChange={(v) =>
-                                updateStep(step.id, {
-                                  type: v as StepType,
-                                })
-                              }
+                              onValueChange={(v) => {
+                                const patch: Partial<WorkflowStep> = { type: v as StepType };
+                                if (v === "Slack" || v === "Discord") patch.action = "send_message";
+                                updateStep(step.id, patch);
+                              }}
                             >
                               <SelectTrigger className="mt-1.5">
                                 <SelectValue />
