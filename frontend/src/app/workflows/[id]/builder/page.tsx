@@ -35,7 +35,10 @@ type StepType =
   | "Tool"
   | "Document"
   | "Condition"
-  | "Switch";
+  | "Switch"
+  | "GitHub"
+  | "Slack"
+  | "Discord";
 type ToolType = "email" | "file" | "browser";
 
 type WorkflowStep = {
@@ -116,7 +119,10 @@ type BackendStep = {
     | "document_query"
     | "file"
     | "email"
-    | "browser";
+    | "browser"
+    | "github"
+    | "slack"
+    | "discord";
 
   prompt?: string;
 
@@ -597,7 +603,43 @@ export default function WorkflowBuilderPage() {
           // fallback safety
           return base;
         }
+          if (s.type === "GitHub") {
+            return {
+              stepId: s.id,
+              name: s.name,
+              position: s.position,
+              type: "github",
+              action: s.action ?? "",
+              owner: (s as any).owner ?? "",
+              repo: (s as any).repo ?? "",
+              title: (s as any).title ?? "",
+              body: s.body ?? "",
+              issue_number: (s as any).issue_number ?? "",
+              comment: (s as any).comment ?? "",
+            };
+          }
 
+          if (s.type === "Slack") {
+            return {
+              stepId: s.id,
+              name: s.name,
+              position: s.position,
+              type: "slack",
+              action: s.action ?? "send_message",
+              text: s.text ?? "",
+            };
+          }
+
+          if (s.type === "Discord") {
+            return {
+              stepId: s.id,
+              name: s.name,
+              position: s.position,
+              type: "discord",
+              action: s.action ?? "send_message",
+              content: s.content ?? "",
+            };
+          }
         // fallback (should never hit)
         return {
           stepId: s.id,
@@ -834,6 +876,9 @@ export default function WorkflowBuilderPage() {
                                   Condition
                                 </SelectItem>
                                 <SelectItem value="Switch">Switch</SelectItem>
+                                <SelectItem value="GitHub">GitHub</SelectItem>
+                                <SelectItem value="Slack">Slack</SelectItem>
+                                <SelectItem value="Discord">Discord</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
@@ -1209,6 +1254,125 @@ export default function WorkflowBuilderPage() {
                                   updateStep(step.id, {
                                     delay: Number(e.target.value),
                                   })
+                                }
+                              />
+                            </div>
+                          )}
+
+                            {/* GitHub */}
+                          {step.type === "GitHub" && (
+                            <>
+                              <div>
+                                <Label>Action</Label>
+                                <Select
+                                  value={step.action}
+                                  onValueChange={(v) =>
+                                    updateStep(step.id, { action: v })
+                                  }
+                                >
+                                  <SelectTrigger className="mt-1.5">
+                                    <SelectValue placeholder="Select action" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="create_issue">Create Issue</SelectItem>
+                                    <SelectItem value="get_issue">Get Issue</SelectItem>
+                                    <SelectItem value="comment_issue">Comment Issue</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div>
+                                <Label>Owner</Label>
+                                <Input
+                                  className="mt-1.5"
+                                  value={(step as any).owner ?? ""}
+                                  onChange={(e) =>
+                                    updateStep(step.id, { owner: e.target.value } as any)
+                                  }
+                                />
+                              </div>
+                              <div>
+                                <Label>Repo</Label>
+                                <Input
+                                  className="mt-1.5"
+                                  value={(step as any).repo ?? ""}
+                                  onChange={(e) =>
+                                    updateStep(step.id, { repo: e.target.value } as any)
+                                  }
+                                />
+                              </div>
+                              {step.action === "create_issue" && (
+                                <>
+                                  <div>
+                                    <Label>Title</Label>
+                                    <Input
+                                      className="mt-1.5"
+                                      value={(step as any).title ?? ""}
+                                      onChange={(e) =>
+                                        updateStep(step.id, { title: e.target.value } as any)
+                                      }
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label>Body</Label>
+                                    <Textarea
+                                      className="mt-1.5"
+                                      value={step.body ?? ""}
+                                      onChange={(e) =>
+                                        updateStep(step.id, { body: e.target.value })
+                                      }
+                                    />
+                                  </div>
+                                </>
+                              )}
+                              {(step.action === "get_issue" || step.action === "comment_issue") && (
+                                <div>
+                                  <Label>Issue Number</Label>
+                                  <Input
+                                    className="mt-1.5"
+                                    value={(step as any).issue_number ?? ""}
+                                    onChange={(e) =>
+                                      updateStep(step.id, { issue_number: e.target.value } as any)
+                                    }
+                                  />
+                                </div>
+                              )}
+                              {step.action === "comment_issue" && (
+                                <div>
+                                  <Label>Comment</Label>
+                                  <Textarea
+                                    className="mt-1.5"
+                                    value={(step as any).comment ?? ""}
+                                    onChange={(e) =>
+                                      updateStep(step.id, { comment: e.target.value } as any)
+                                    }
+                                  />
+                                </div>
+                              )}
+                            </>
+                          )}
+
+                              {/* Slack */}
+                          {step.type === "Slack" && (
+                            <div>
+                              <Label>Message</Label>
+                              <Textarea
+                                className="mt-1.5"
+                                value={step.text ?? ""}
+                                onChange={(e) =>
+                                  updateStep(step.id, { text: e.target.value })
+                                }
+                              />
+                            </div>
+                          )}
+                              {/* Discord */}
+                          {step.type === "Discord" && (
+                            <div>
+                              <Label>Message</Label>
+                              <Textarea
+                                className="mt-1.5"
+                                value={step.content ?? ""}
+                                onChange={(e) =>
+                                  updateStep(step.id, { content: e.target.value })
                                 }
                               />
                             </div>
