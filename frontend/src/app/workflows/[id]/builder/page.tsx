@@ -94,6 +94,13 @@ type WorkflowStep = {
   trueTarget?: string;
   falseTarget?: string;
 
+  // GitHub
+  owner?: string;
+  repo?: string;
+  issue_number?: string;
+  comment?: string;
+  title?: string;
+
   // SWITCH
   cases?: {
     value: string; // what to match
@@ -296,7 +303,7 @@ export default function WorkflowBuilderPage() {
       const normalizedSteps: WorkflowStep[] = backendSteps.map((s) => ({
         id: s.stepId,
         name: s.name,
-        type:
+          type:
           s.type === "delay"
             ? "Delay"
             : s.type === "http"
@@ -307,11 +314,17 @@ export default function WorkflowBuilderPage() {
                   ? "Switch"
                   : s.type === "document_query"
                     ? "Document"
-                    : s.type === "file" ||
-                        s.type === "email" ||
-                        s.type === "browser"
-                      ? "Tool"
-                      : "LLM",
+                    : s.type === "github"
+                      ? "GitHub"
+                      : s.type === "slack"
+                        ? "Slack"
+                        : s.type === "discord"
+                          ? "Discord"
+                          : s.type === "file" ||
+                              s.type === "email" ||
+                              s.type === "browser"
+                            ? "Tool"
+                            : "LLM",
 
         position: (s as any).position || { x: 0, y: 0 },
 
@@ -358,6 +371,11 @@ export default function WorkflowBuilderPage() {
         // SWITCH
         cases: (s as any).cases ?? [],
         defaultTarget: (s as any).defaultTarget ?? "",
+        owner: (s as any).owner ?? "",
+        repo: (s as any).repo ?? "",
+        issue_number: (s as any).issue_number ?? "",
+        comment: (s as any).comment ?? "",
+        title: (s as any).title ?? "",
       }));
 
       setSteps(normalizedSteps);
