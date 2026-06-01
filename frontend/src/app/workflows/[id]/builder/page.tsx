@@ -573,7 +573,7 @@ export default function WorkflowBuilderPage() {
       });
 
       // 🛡️ Final Graph Integrity Validation Check
-      const validation = validateGraphIntegrity(backendSteps, edges);
+      const validation = validateGraphIntegrity(enrichedSteps, edges);
       if (!validation.isValid) {
         console.error("Save workflow blocked due to validation errors:", validation.errors);
         addToast({
