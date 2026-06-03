@@ -16,13 +16,20 @@ const templateRoutes = require("./routes/template.routes");
 const memoryRoutes = require("./routes/memory.routes");
 const assistantRoutes = require("./routes/assistant.routes");
 const telemetryRoutes = require("./routes/telemetry.routes");
+const { globalLimiter } = require("./middleware/rateLimit.middleware");
 require("dotenv").config();
 
 const app = express();
 
+app.set("trust proxy", 1);
+
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// apply global rate limiting to all API and webhook routes
+app.use("/api", globalLimiter);
+app.use("/webhook", globalLimiter);
 
 // health
 app.get("/health", (req, res) => res.json({ ok: true, ts: Date.now() }));
