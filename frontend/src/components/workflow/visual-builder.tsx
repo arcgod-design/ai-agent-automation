@@ -196,7 +196,7 @@ function computeNodes(
           </div>
         ),
       },
-      style: {
+style: {
         padding: "12px 16px",
         borderRadius: "12px",
         border: `1px solid ${getNodeColor(step.type)}`,
@@ -209,6 +209,7 @@ function computeNodes(
         maxWidth: 240,
         textAlign: "center" as const,
         boxShadow: `0 0 0 1px ${getNodeColor(step.type)}20, 0 2px 6px rgba(0,0,0,0.05)`,
+        touchAction: "none", 
       },
     };
   });
@@ -637,7 +638,7 @@ export default function VisualBuilder({
           </div>
         ),
       },
-      style: {
+ style: {
         padding: "12px 16px",
         borderRadius: "12px",
         border: `1px solid ${getNodeColor("LLM")}`,
@@ -650,6 +651,7 @@ export default function VisualBuilder({
         maxWidth: 240,
         textAlign: "center" as const,
         boxShadow: `0 0 0 1px ${getNodeColor("LLM")}20, 0 2px 6px rgba(0,0,0,0.05)`,
+        touchAction: "none", 
       },
     };
 
@@ -681,6 +683,7 @@ export default function VisualBuilder({
       <ReactFlow
         nodes={nodes}
         edges={flowEdges}
+        nodesDraggable={true}
         onConnect={onConnect}
         onNodesChange={onNodesChange}
         onEdgesChange={handleEdgesChange}
