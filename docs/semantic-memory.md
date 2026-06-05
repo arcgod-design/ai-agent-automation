@@ -10,7 +10,7 @@ When an agent processes information designated for memory retention, the text is
 
 ## Similarity Retrieval
 
-During workflow execution, the engine queries the memory storage using cosine similarity. It compares the current execution context against stored embeddings. An automatic similarity threshold filter is applied to prevent irrelevant noise from being injected into the agent's prompt.
+During workflow execution, the engine queries the memory storage using cosine similarity. It compares the current execution context against stored embeddings. The system retrieves the top *K* most relevant memories, sorted by highest similarity score, to dynamically inject into the agent's prompt.
 
 ## Memory Management UI
 
