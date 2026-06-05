@@ -97,7 +97,7 @@ export function AssistantContextPreview() {
               ))}
             </Section>
           )}
-        </div>
+        </motion.div>
       )}
     </div>
   );

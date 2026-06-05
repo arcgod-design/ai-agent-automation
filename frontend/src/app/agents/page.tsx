@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Plus, Trash2, Cpu, Thermometer, Zap } from "lucide-react";
 import { useAssistantContext } from "@/context/assistant-context";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogTrigger,
