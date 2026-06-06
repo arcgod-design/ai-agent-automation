@@ -248,7 +248,12 @@ export default function WorkflowBuilderPage() {
   const { addToast } = useToast();
   const [edges, setEdges] = useState<any[]>([]);
   const { setContext, clearContext } = useAssistantContext();
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [savedStepsSnapshot, setSavedStepsSnapshot] = useState<string>("[]");
+  const [savedEdgesSnapshot, setSavedEdgesSnapshot] = useState<string>("[]");
+
+  const hasUnsavedChanges = 
+    JSON.stringify(steps) !== savedStepsSnapshot || 
+    JSON.stringify(edges) !== savedEdgesSnapshot;
 
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -282,6 +287,7 @@ export default function WorkflowBuilderPage() {
         label: e.label || e.caseValue || e.condition?.toUpperCase() || "",
       }));
       setEdges(backendEdges);
+      setSavedEdgesSnapshot(JSON.stringify(backendEdges));
 
       const normalizedSteps: WorkflowStep[] = backendSteps.map((s) => ({
         id: s.stepId,
@@ -356,6 +362,7 @@ export default function WorkflowBuilderPage() {
       }));
 
       setSteps(normalizedSteps);
+      setSavedStepsSnapshot(JSON.stringify(normalizedSteps));
     } catch (err) {
       console.error("Failed to load workflow", err);
     } finally {
@@ -445,7 +452,6 @@ export default function WorkflowBuilderPage() {
         prompt: "",
       },
     ]);
-    setHasUnsavedChanges(true);
   }
 
   function enrichStepsWithEdges(steps: WorkflowStep[], edges: any[]) {
@@ -685,9 +691,8 @@ export default function WorkflowBuilderPage() {
         title: "Workflow saved",
         description: "Your workflow steps were updated successfully",
       });
-      if (JSON.stringify(steps) === savedSteps && JSON.stringify(edges) === savedEdges) {
-        setHasUnsavedChanges(false);
-      }
+      setSavedStepsSnapshot(JSON.stringify(steps));
+      setSavedEdgesSnapshot(JSON.stringify(edges));
     } catch (err) {
       console.error("Save workflow failed:", err);
       addToast({
@@ -700,14 +705,12 @@ export default function WorkflowBuilderPage() {
 
   function removeStep(stepId: string) {
     setSteps((prev) => prev.filter((s) => s.id !== stepId));
-    setHasUnsavedChanges(true);
   }
 
   function updateStep(stepId: string, patch: Partial<WorkflowStep>) {
     setSteps((prev) =>
       prev.map((s) => (s.id === stepId ? { ...s, ...patch } : s)),
     );
-    setHasUnsavedChanges(true);
   }
 
   if (loading) {
@@ -801,15 +804,9 @@ export default function WorkflowBuilderPage() {
             {builderMode === "visual" && (
               <VisualBuilder
                 steps={steps}
-                setSteps={(newSteps) => {
-                  setSteps(newSteps);
-                  setHasUnsavedChanges(true);
-                }}
+                setSteps={setSteps}
                 edges={edges}
                 onEdgesChange={(updatedEdges) => {
-                  if (JSON.stringify(edges) !== JSON.stringify(updatedEdges)) {
-                    setHasUnsavedChanges(true);
-                  }
                   setEdges(updatedEdges);
                 }}
                 onSave={saveWorkflow}
