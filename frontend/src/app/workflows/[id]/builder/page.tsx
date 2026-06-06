@@ -485,9 +485,6 @@ export default function WorkflowBuilderPage() {
 
   async function saveWorkflow() {
     try {
-      const savedSteps = JSON.stringify(steps);
-      const savedEdges = JSON.stringify(edges);
-
       const enrichedSteps = enrichStepsWithEdges(steps, edges);
 
       const backendSteps = enrichedSteps.map((s) => {
