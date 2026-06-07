@@ -153,11 +153,15 @@ async function executeSingleTask(task) {
 
         visited.add(getStepId(currentStep));
 
+        // ⏱️ Measure individual step execution duration
+        const stepStart = Date.now();
         const result = await executeStep(currentStep, context, agent);
+        const stepDurationMs = Date.now() - stepStart;
 
-        // attach debug info directly to result
+        // 🔥 attach debug info and telemetry directly to result
         result.name = currentStep.name;
         result.type = currentStep.type;
+        result.durationMs = stepDurationMs;
 
         await Task.findByIdAndUpdate(task._id, {
           $push: { stepResults: result },
@@ -174,10 +178,10 @@ async function executeSingleTask(task) {
           break;
         }
 
-        // FIND NEXT STEP USING EDGES
+        // 🔥 FIND NEXT STEP USING EDGES
         let nextEdge = null;
 
-        // CONDITION
+        // ✅ CONDITION
         if (currentStep.type === "condition") {
           const branch = result.branch;
 
@@ -188,7 +192,7 @@ async function executeSingleTask(task) {
           );
         }
 
-        // SWITCH
+        // ✅ SWITCH
         else if (currentStep.type === "switch") {
           const normalize = (v) =>
             String(v || "").toLowerCase().trim();
@@ -200,7 +204,7 @@ async function executeSingleTask(task) {
 
             const edgeValue = normalize(e.caseValue);
 
-            return value.includes(edgeValue);
+            return value.includes(edgeValue); // 🔥 FIX
           });
 
           console.log("🔀 SWITCH DEBUG:", {
@@ -220,7 +224,7 @@ async function executeSingleTask(task) {
           }
         }
 
-        // DEFAULT (linear fallback)
+        // ✅ DEFAULT (linear fallback)
         else {
           nextEdge = edges.find((e) => e.source === getStepId(currentStep));
         }
@@ -347,6 +351,7 @@ async function runWorkerLoop() {
   writeLog("Runner started", "info", { workerId: WORKER_ID });
 
   pollAndProcessQueue();
+}
 }
 
 /* -------------------------

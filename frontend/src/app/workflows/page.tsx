@@ -20,6 +20,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   Empty,
   EmptyContent,
   EmptyDescription,
@@ -30,6 +35,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { motion } from "framer-motion";
 import { useAssistantContext } from "@/context/assistant-context";
 import { useToast } from "@/hooks/use-toast";
 import { apiUrl } from "@/lib/api";
@@ -41,6 +47,7 @@ import {
   GitFork,
   MoreVertical,
   Plus,
+  Pencil,
 } from "lucide-react";
 import Link from "next/link";
 import { FormEvent, memo, useCallback, useEffect, useState } from "react";
@@ -80,8 +87,24 @@ function getStatusColor(status: string) {
   }
 }
 
-/* ---------------- Memoized Workflow Card ---------------- */
-// Extracted to prevent entire list from re-rendering when one card updates
+function getCategoryBadgeClass(category?: string) {
+  switch (category?.toLowerCase()) {
+    case "custom":
+      return "bg-violet-100 text-violet-700 border-violet-200";
+    case "productivity":
+      return "bg-emerald-100 text-emerald-700 border-emerald-200";
+    case "automation":
+      return "bg-primary/15 text-primary border-primary/30";
+    case "documentation":
+      return "bg-amber-100 text-amber-900 border-amber-200";
+    case "data":
+      return "bg-sky-100 text-sky-800 border-sky-200";
+    default:
+      return "bg-muted text-muted-foreground border-border";
+  }
+}
+
+// ---------- WorkflowCard with inline editing, double-click, and copy ID ----------
 const WorkflowCard = memo(
   ({
     workflow,
@@ -90,6 +113,7 @@ const WorkflowCard = memo(
     onCopy,
     onEdit,
     onDelete,
+    onUpdate,
   }: {
     workflow: Workflow;
     agentName: string;
@@ -97,34 +121,128 @@ const WorkflowCard = memo(
     onCopy: (id: string) => void;
     onEdit: (workflow: Workflow) => void;
     onDelete: (id: string) => void;
+    onUpdate: () => void;
   }) => {
+    const [isEditing, setIsEditing] = useState(false);
+    const [editName, setEditName] = useState(workflow.name);
+    const [isSaving, setIsSaving] = useState(false);
+    const { addToast } = useToast();
+
+    const handleSave = async () => {
+      if (editName.trim() === "") {
+        addToast({
+          type: "error",
+          title: "Validation Error",
+          description: "Workflow name cannot be empty.",
+        });
+        setEditName(workflow.name);
+        setIsEditing(false);
+        return;
+      }
+      if (editName === workflow.name) {
+        setIsEditing(false);
+        return;
+      }
+      setIsSaving(true);
+      try {
+        const res = await fetch(apiUrl(`/workflows/${workflow._id}`), {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer " + (localStorage.getItem("token") ?? ""),
+          },
+          body: JSON.stringify({ name: editName }),
+        });
+        if (!res.ok) throw new Error("Update failed");
+        onUpdate(); // refresh parent
+        addToast({ type: "success", title: "Workflow renamed" });
+      } catch (err) {
+        console.error(err);
+        setEditName(workflow.name);
+        addToast({ type: "error", title: "Failed to rename workflow" });
+      } finally {
+        setIsSaving(false);
+        setIsEditing(false);
+      }
+    };
+
     return (
-      <Card className="p-6">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <Link
-              href={`/workflows/${workflow._id}`}
-              className="text-lg font-semibold hover:text-primary"
-            >
-              {workflow.name}
-            </Link>
+      <motion.div
+        whileHover={{ y: -4 }}
+        transition={{ duration: 0.24, ease: "easeOut" }}
+        className="group"
+      >
+        <Card className="p-6">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              {isEditing ? (
+                <div className="flex items-center gap-2">
+                  <input
+  type="text"
+  value={editName}
+  onChange={(e) => setEditName(e.target.value)}
+  onBlur={() => {
+    if (isEditing && !isSaving) {
+      handleSave();
+    }
+  }}
+  onKeyDown={(e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleSave();
+    } else if (e.key === "Escape") {
+      setIsEditing(false);
+      setEditName(workflow.name);
+    }
+  }}
+  autoFocus
+  disabled={isSaving}
+  className="text-lg font-semibold bg-background border border-input rounded px-2 py-1 flex-1"
+/>
+                  {isSaving && (
+                    <span className="text-sm text-muted-foreground">Saving...</span>
+                  )}
+                </div>
+              ) : (
+                <div
+                  className="group flex items-center gap-2"
+                  onDoubleClick={() => {
+                    setIsEditing(true);
+                    setEditName(workflow.name);
+                  }}
+                >
+                  <Link
+                    href={`/workflows/${workflow._id}`}
+                    className="text-lg font-semibold hover:text-primary"
+                  >
+                    {workflow.name}
+                  </Link>
+                  <button
+                    onClick={() => {
+                      setIsEditing(true);
+                      setEditName(workflow.name);
+                    }}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity"
+                    aria-label="Edit name"
+                  >
+                    <Pencil className="h-4 w-4 text-muted-foreground hover:text-primary" />
+                  </button>
+                </div>
+              )}
+              {workflow.description && (
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {workflow.description}
+                </p>
+              )}
+            </div>
 
-            {workflow.description && (
-              <p className="mt-2 text-sm text-muted-foreground">
-                {workflow.description}
-              </p>
-            )}
-          </div>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-
-            <DropdownMenuContent align="end">
-              <Link href={`/workflows/${workflow._id}/builder`}>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
                 <DropdownMenuItem
                   onClick={(e) => {
                     e.preventDefault();
@@ -134,46 +252,64 @@ const WorkflowCard = memo(
                 >
                   Edit Workflow Details
                 </DropdownMenuItem>
-              </Link>
-              <DropdownMenuItem
-                className="text-destructive"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onDelete(workflow._id);
-                }}
-              >
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-
-        <div className="mt-4 flex items-center justify-between">
-          <Badge className={getStatusColor(workflow.status)}>
-            {workflow.status}
-          </Badge>
-
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Bot className="size-4" />
-            <span>{agentName}</span>
+                <DropdownMenuItem
+                  className="text-destructive"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onDelete(workflow._id);
+                  }}
+                >
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
-        </div>
+
+          <div className="mt-4 flex flex-wrap items-center gap-2 overflow-hidden opacity-0 max-h-0 transition-all duration-200 group-hover:opacity-100 group-hover:max-h-24">
+            <Button variant="outline" size="sm" onClick={() => onEdit(workflow)}>
+              Edit details
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-destructive"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onDelete(workflow._id);
+              }}
+            >
+              Delete
+            </Button>
+          </div>
+
+          <div className="mt-4 flex items-center justify-between">
+            <Badge className={getStatusColor(workflow.status)}>
+              {workflow.status}
+            </Badge>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Bot className="size-4" />
+              <span>{agentName}</span>
+            </div>
+          </div>
 
         <div className="mt-3 flex items-center justify-between border-t pt-3">
           <span className="text-xs text-muted-foreground font-mono truncate max-w-[160px]">
             {workflow._id.slice(0, 8)}...
           </span>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 gap-1.5 text-xs"
-            onClick={(e) => {
-              e.preventDefault();
-              onCopy(workflow._id);
-            }}
-          >
-            {isCopied ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 gap-1.5 text-xs"
+                onClick={(e) => {
+                  e.preventDefault();
+                  onCopy(workflow._id);
+                }}
+              >
+                {isCopied ? (
               <>
                 <Check className="size-3 text-green-500" />
                 <span className="text-green-500">Copied!</span>
@@ -184,11 +320,15 @@ const WorkflowCard = memo(
                 Copy ID
               </>
             )}
-          </Button>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">Copy workflow ID</TooltipContent>
+          </Tooltip>
         </div>
       </Card>
+    </motion.div>
     );
-  },
+  }
 );
 
 WorkflowCard.displayName = "WorkflowCard";
@@ -210,17 +350,13 @@ export default function WorkflowsPage() {
         Authorization: "Bearer " + localStorage.getItem("token"),
       },
     });
-
     const data = await res.json();
     if (data.ok) {
       setAgents(data.agents);
-
-      // 🔥 build fast lookup map
       const map: Record<string, string> = {};
       data.agents.forEach((a: Agent) => {
         map[a._id] = a.name;
       });
-
       setAgentMap(map);
     }
   }, []);
@@ -232,7 +368,6 @@ export default function WorkflowsPage() {
           Authorization: "Bearer " + (localStorage.getItem("token") ?? ""),
         },
       });
-
       const data = await res.json();
       setWorkflows(data.workflows || []);
     } catch (err) {
@@ -246,7 +381,6 @@ export default function WorkflowsPage() {
     async (id: string) => {
       const confirmed = confirm("Delete this workflow? This cannot be undone.");
       if (!confirmed) return;
-
       try {
         const res = await fetch(apiUrl(`/workflows/${id}`), {
           method: "DELETE",
@@ -254,7 +388,6 @@ export default function WorkflowsPage() {
             Authorization: "Bearer " + (localStorage.getItem("token") ?? ""),
           },
         });
-
         if (!res.ok) {
           addToast({
             type: "error",
@@ -264,19 +397,17 @@ export default function WorkflowsPage() {
           });
           return;
         }
-
         addToast({
           type: "success",
           title: "Workflow deleted",
           description: "Your workflow was deleted successfully.",
         });
-
         fetchWorkflows();
       } catch (err) {
         console.error("Delete failed:", err);
       }
     },
-    [addToast, fetchWorkflows],
+    [addToast, fetchWorkflows]
   );
 
   useEffect(() => {
@@ -292,15 +423,13 @@ export default function WorkflowsPage() {
       if (!agentId) return "No agent";
       return agentMap[agentId] ?? "Unknown agent";
     },
-    [agentMap],
+    [agentMap]
   );
 
   useEffect(() => {
     if (loading) return;
-
     setContext({
       page: "workflows",
-
       recentActivity: workflows.slice(0, 5).map((wf) => ({
         type: "workflow",
         name: wf.name,
@@ -309,11 +438,9 @@ export default function WorkflowsPage() {
         status: wf.status,
       })),
     });
-
     return () => {
       clearContext();
     };
-    // Properly resolving exhaustive-deps by adding stable context setters and callbacks
   }, [loading, workflows, setContext, clearContext, getAgentName]);
 
   const copyId = useCallback(
@@ -330,7 +457,7 @@ export default function WorkflowsPage() {
         });
       }
     },
-    [addToast],
+    [addToast]
   );
 
   const handleEditWorkflow = useCallback((workflow: Workflow) => {
@@ -341,7 +468,6 @@ export default function WorkflowsPage() {
     <AuthGuard>
       <div className="flex min-h-screen">
         <AppSidebar />
-
         <main
           className="flex-1 transition-[padding] duration-300"
           style={{ paddingLeft: "var(--sidebar-width, 256px)" }}
@@ -354,7 +480,6 @@ export default function WorkflowsPage() {
                   Manage your AI automation workflows
                 </p>
               </div>
-
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button>
@@ -363,12 +488,10 @@ export default function WorkflowsPage() {
                     <ChevronDown className="ml-2 size-4 opacity-70" />
                   </Button>
                 </DropdownMenuTrigger>
-
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={() => setOpen("blank")}>
                     Blank Workflow
                   </DropdownMenuItem>
-
                   <DropdownMenuItem onClick={() => setOpen("template")}>
                     Choose Template
                   </DropdownMenuItem>
@@ -417,6 +540,7 @@ export default function WorkflowsPage() {
                     onCopy={copyId}
                     onEdit={handleEditWorkflow}
                     onDelete={handleDeleteWorkflow}
+                    onUpdate={fetchWorkflows}
                   />
                 ))}
               </div>
@@ -439,8 +563,7 @@ export default function WorkflowsPage() {
   );
 }
 
-/* ---------------- Modal ---------------- */
-
+// ---------- Modals (unchanged from upstream) ----------
 function CreateWorkflowModal({
   mode,
   onOpenChange,
@@ -456,13 +579,11 @@ function CreateWorkflowModal({
   async function createWorkflow(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
-
     const form = e.currentTarget;
     const name = (form.elements.namedItem("name") as HTMLInputElement).value;
     const description = (
       form.elements.namedItem("description") as HTMLTextAreaElement
     ).value;
-
     try {
       const res = await fetch(apiUrl("/workflows"), {
         method: "POST",
@@ -472,15 +593,12 @@ function CreateWorkflowModal({
         },
         body: JSON.stringify({ name, description }),
       });
-
       if (!res.ok) throw new Error("Failed to create workflow");
-
       addToast({
         type: "success",
         title: "Workflow created",
         description: "Your workflow was created successfully.",
       });
-
       refresh();
       form.reset();
       onOpenChange();
@@ -506,7 +624,6 @@ function CreateWorkflowModal({
             Create a blank workflow or start from a template.
           </DialogDescription>
         </DialogHeader>
-
         {mode === "blank" && (
           <form onSubmit={createWorkflow} className="space-y-6">
             <div className="space-y-2">
@@ -518,7 +635,6 @@ function CreateWorkflowModal({
                 required
               />
             </div>
-
             <div className="space-y-2">
               <Label htmlFor="description">Description</Label>
               <Textarea
@@ -528,7 +644,6 @@ function CreateWorkflowModal({
                 className="min-h-[100px]"
               />
             </div>
-
             <DialogFooter>
               <Button variant="outline" type="button" onClick={onOpenChange}>
                 Cancel
@@ -571,7 +686,6 @@ function EditWorkflowModal({
   async function save() {
     if (!workflow) return;
     setLoading(true);
-
     try {
       const res = await fetch(apiUrl(`/workflows/${workflow._id}`), {
         method: "PUT",
@@ -581,21 +695,12 @@ function EditWorkflowModal({
         },
         body: JSON.stringify({ name, description }),
       });
-
       if (!res.ok) throw new Error("Update failed");
-
-      addToast({
-        type: "success",
-        title: "Workflow updated",
-      });
-
+      addToast({ type: "success", title: "Workflow updated" });
       refresh();
       close();
     } catch {
-      addToast({
-        type: "error",
-        title: "Failed to update workflow",
-      });
+      addToast({ type: "error", title: "Failed to update workflow" });
     } finally {
       setLoading(false);
     }
@@ -610,13 +715,11 @@ function EditWorkflowModal({
             Update the workflow name and description.
           </DialogDescription>
         </DialogHeader>
-
         <div className="space-y-4">
           <div>
             <Label>Workflow Name</Label>
             <Input value={name} onChange={(e) => setName(e.target.value)} />
           </div>
-
           <div>
             <Label>Description</Label>
             <Textarea
@@ -625,7 +728,6 @@ function EditWorkflowModal({
             />
           </div>
         </div>
-
         <DialogFooter>
           <Button variant="outline" onClick={close}>
             Cancel
@@ -669,20 +771,11 @@ function TemplateSelector({
         Authorization: "Bearer " + localStorage.getItem("token"),
       },
     });
-
     if (!res.ok) {
-      addToast({
-        type: "error",
-        title: "Failed to create workflow",
-      });
+      addToast({ type: "error", title: "Failed to create workflow" });
       return;
     }
-
-    addToast({
-      type: "success",
-      title: "Workflow created from template",
-    });
-
+    addToast({ type: "success", title: "Workflow created from template" });
     refresh();
     close();
   }
@@ -699,17 +792,28 @@ function TemplateSelector({
               <span className="text-xl">{t.icon ?? "⚙️"}</span>
               {t.name}
             </div>
-
             <p className="text-sm text-muted-foreground line-clamp-2">
               {t.description}
             </p>
-
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              {t.category && <Badge variant="secondary">{t.category}</Badge>}
+              {t.category && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge
+                      variant="secondary"
+                      className={getCategoryBadgeClass(t.category)}
+                    >
+                      {t.category}
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    Category: {t.category}
+                  </TooltipContent>
+                </Tooltip>
+              )}
               {t.stepsCount && <span>{t.stepsCount} steps</span>}
             </div>
           </div>
-
           <Button
             size="sm"
             className="mt-4 w-full"

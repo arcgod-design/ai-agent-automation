@@ -6,6 +6,7 @@ const { runLLM } = require("./llmAdapter");
 const { runGitHub } = require("../integrations/github");
 const { runSlack } = require("../integrations/slack");
 const { runDiscord } = require("../integrations/discord");
+const { invokeTool: invokeMcpTool } = require("../mcp/executionAdapter");
 require("dotenv").config();
 
 function resolveWorkflowFilePath(filePath) {
@@ -51,12 +52,29 @@ async function executeStep(step, context = {}, agent = null) {
 
       let finalPrompt = prompt;
 
+      // ── Memory retrieval (with telemetry capture) ──────────────────────
+      let memoryMetrics = null;
+
       if (step.useMemory && agent) {
         const { retrieveMemory } = require("../services/memoryService");
 
         const memories = await retrieveMemory(agent, prompt, step.memoryTopK || 5);
 
+        // 📊 Capture similarity telemetry for the insights engine
         if (memories.length > 0) {
+          const similarityScores = memories.map((m) =>
+            typeof m.score === "number" ? m.score : 0
+          );
+          const averageSimilarity =
+            similarityScores.reduce((acc, s) => acc + s, 0) / similarityScores.length;
+
+          memoryMetrics = {
+            useMemory: true,
+            retrievedMemoriesCount: memories.length,
+            similarityScores,
+            averageSimilarity: Math.round(averageSimilarity * 1000) / 1000
+          };
+
           const MAX_MEMORY_CHARS = 4000;
 
           let memoryText = memories
@@ -88,7 +106,15 @@ If the answer appears in MEMORY, respond using it.
 If MEMORY contains the project name or related information, return it clearly.
 Do not say you lack memory.`;
 
-          console.log("Retrieved memories:", memories.length);
+          console.log("Retrieved memories:", memories.length, "| avgSimilarity:", memoryMetrics.averageSimilarity);
+        } else {
+          // Memory was enabled but nothing was retrieved
+          memoryMetrics = {
+            useMemory: true,
+            retrievedMemoriesCount: 0,
+            similarityScores: [],
+            averageSimilarity: 0
+          };
         }
       }
 
@@ -107,7 +133,9 @@ Do not say you lack memory.`;
         output: llmRes.text,
         raw: llmRes.raw,
         success: true,
-        timestamp: new Date()
+        timestamp: new Date(),
+        // Attach memory telemetry if memory was used (null otherwise)
+        ...(memoryMetrics ? { metrics: memoryMetrics } : {})
       };
 
       if (step.useMemory && agent && llmRes.text) {
@@ -396,14 +424,35 @@ Do not say you lack memory.`;
 
       const documentId = step.documentId;
       const query = interpolate(step.query || "", context);
+      const requestedTopK = step.topK || 3;
 
       const chunks = await queryDocument(
         agent,
         context.userId,
         documentId,
         query,
-        step.topK || 3
+        requestedTopK
       );
+
+      // 📊 Capture RAG chunk retrieval telemetry for the insights engine
+      const RELEVANT_SIMILARITY_THRESHOLD = 0.7;
+      const chunkScores = chunks.map((c) =>
+        typeof c.score === "number" ? c.score : 0
+      );
+      const ragAverageSimilarity =
+        chunkScores.length > 0
+          ? chunkScores.reduce((acc, s) => acc + s, 0) / chunkScores.length
+          : 0;
+      const relevantChunksCount = chunkScores.filter(
+        (s) => s >= RELEVANT_SIMILARITY_THRESHOLD
+      ).length;
+
+      const ragMetrics = {
+        topK: requestedTopK,
+        retrievedChunksCount: chunks.length,
+        averageSimilarity: Math.round(ragAverageSimilarity * 1000) / 1000,
+        relevantChunksCount
+      };
 
       let contextText = chunks
         .map((c, i) => `Chunk ${i + 1}:\n${c.content}`)
@@ -436,6 +485,10 @@ ${query}
         temperature: agent?.config?.temperature
       });
 
+      console.log(
+        `📄 RAG query: topK=${requestedTopK}, retrieved=${chunks.length}, relevant=${relevantChunksCount}, avgSimilarity=${ragMetrics.averageSimilarity}`
+      );
+
       return {
         stepId: step.stepId,
         type: "document_query",
@@ -443,7 +496,8 @@ ${query}
         input: query,
         output: llmRes.text,
         success: true,
-        timestamp: new Date()
+        timestamp: new Date(),
+        metrics: ragMetrics
       };
     }
 
@@ -566,6 +620,52 @@ ${rawOutput}
         success: true,
         timestamp: new Date(),
       };
+    }
+
+    // ----- MCP -----
+    if (step.type === "mcp") {
+      try {
+        const execution = await invokeMcpTool({
+          userId: context.userId,
+          serverId: step.serverId,
+          toolName: step.toolName,
+          argumentsInput: step.arguments,
+          context,
+          interpolate,
+          timeoutMs: step.timeoutMs,
+        });
+
+        return {
+          stepId: step.stepId || null,
+          type: "mcp",
+          tool: "mcp",
+          input: {
+            serverId: step.serverId,
+            toolName: step.toolName,
+            arguments: execution.args,
+          },
+          output: execution.result,
+          serverId: step.serverId,
+          toolName: step.toolName,
+          success: true,
+          timestamp: new Date(),
+        };
+      } catch (err) {
+        return {
+          stepId: step.stepId || null,
+          type: "mcp",
+          tool: "mcp",
+          input: {
+            serverId: step.serverId,
+            toolName: step.toolName,
+          },
+          output: err.message,
+          serverId: step.serverId,
+          toolName: step.toolName,
+          success: false,
+          timestamp: new Date(),
+        };
+      }
     }
 
     // ----- GITHUB -----
