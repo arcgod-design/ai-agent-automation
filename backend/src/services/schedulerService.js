@@ -19,6 +19,9 @@ async function createTaskForSchedule(schedule) {
     }
 
     const steps = workflow.metadata?.steps;
+    const edges = Array.isArray(workflow.metadata?.edges)
+      ? workflow.metadata.edges
+      : [];
 
     if (!Array.isArray(steps) || steps.length === 0) {
       console.warn(
@@ -42,6 +45,7 @@ async function createTaskForSchedule(schedule) {
       input: schedule.taskInput || {},
       metadata: {
         ...(schedule.taskMetadata || {}),
+        edges,
         scheduledBy: schedule._id.toString(),
         trigger: "schedule"
       },
@@ -158,6 +162,15 @@ async function start() {
         } catch (err) {
           console.error("SchedulerService changeStream handler error", err);
         }
+      });
+      changeStream.on("error", (err) => {
+        console.warn(
+          "SchedulerService: change stream disabled. Schedule changes will require a service restart.",
+          err?.message || err
+        );
+        try {
+          changeStream.close();
+        } catch {}
       });
     } catch (err) {
       console.warn("SchedulerService: change stream not supported or failed to start. You'll need to restart service to pick up schedule changes.", err.message || err);

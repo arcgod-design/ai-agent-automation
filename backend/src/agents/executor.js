@@ -3,8 +3,44 @@ const fs = require("fs");
 const path = require("path");
 const axios = require("axios");
 const { runLLM } = require("./llmAdapter");
+const { runGitHub } = require("../integrations/github");
+const { runSlack } = require("../integrations/slack");
+const { runDiscord } = require("../integrations/discord");
+const { invokeTool: invokeMcpTool } = require("../mcp/executionAdapter");
 require("dotenv").config();
 
+function resolveWorkflowFilePath(filePath) {
+  if (typeof filePath !== "string" || filePath.trim() === "") {
+    throw new Error("Invalid file path");
+  }
+
+  if (filePath.includes("\0")) {
+    throw new Error("Invalid file path");
+  }
+
+  if (path.isAbsolute(filePath) || path.win32.isAbsolute(filePath)) {
+    throw new Error("Invalid file path: absolute paths are not allowed");
+  }
+
+  const workflowBaseDir = path.resolve(
+    process.cwd(),
+    "runtime",
+    "workflow-files"
+  );
+
+  const resolvedPath = path.resolve(workflowBaseDir, filePath);
+  const relativePath = path.relative(workflowBaseDir, resolvedPath);
+
+  if (
+    relativePath === "" ||
+    relativePath.startsWith("..") ||
+    path.isAbsolute(relativePath)
+  ) {
+    throw new Error("Invalid file path: path escapes workflow directory");
+  }
+
+  return resolvedPath;
+}
 
 async function executeStep(step, context = {}, agent = null) {
   const start = Date.now();
@@ -16,12 +52,29 @@ async function executeStep(step, context = {}, agent = null) {
 
       let finalPrompt = prompt;
 
+      // ── Memory retrieval (with telemetry capture) ──────────────────────
+      let memoryMetrics = null;
+
       if (step.useMemory && agent) {
         const { retrieveMemory } = require("../services/memoryService");
 
         const memories = await retrieveMemory(agent, prompt, step.memoryTopK || 5);
 
+        // 📊 Capture similarity telemetry for the insights engine
         if (memories.length > 0) {
+          const similarityScores = memories.map((m) =>
+            typeof m.score === "number" ? m.score : 0
+          );
+          const averageSimilarity =
+            similarityScores.reduce((acc, s) => acc + s, 0) / similarityScores.length;
+
+          memoryMetrics = {
+            useMemory: true,
+            retrievedMemoriesCount: memories.length,
+            similarityScores,
+            averageSimilarity: Math.round(averageSimilarity * 1000) / 1000
+          };
+
           const MAX_MEMORY_CHARS = 4000;
 
           let memoryText = memories
@@ -53,7 +106,15 @@ If the answer appears in MEMORY, respond using it.
 If MEMORY contains the project name or related information, return it clearly.
 Do not say you lack memory.`;
 
-          console.log("Retrieved memories:", memories.length);
+          console.log("Retrieved memories:", memories.length, "| avgSimilarity:", memoryMetrics.averageSimilarity);
+        } else {
+          // Memory was enabled but nothing was retrieved
+          memoryMetrics = {
+            useMemory: true,
+            retrievedMemoriesCount: 0,
+            similarityScores: [],
+            averageSimilarity: 0
+          };
         }
       }
 
@@ -63,6 +124,7 @@ Do not say you lack memory.`;
         temperature: agent?.config?.temperature,
         ...step.options
       });
+
       const result = {
         stepId: step.stepId || null,
         type: "llm",
@@ -71,7 +133,9 @@ Do not say you lack memory.`;
         output: llmRes.text,
         raw: llmRes.raw,
         success: true,
-        timestamp: new Date()
+        timestamp: new Date(),
+        // Attach memory telemetry if memory was used (null otherwise)
+        ...(memoryMetrics ? { metrics: memoryMetrics } : {})
       };
 
       if (step.useMemory && agent && llmRes.text) {
@@ -100,7 +164,6 @@ Do not say you lack memory.`;
         step.seconds ?? step.delay ?? step.prompt ?? 0
       );
 
-
       console.log("⏳ Delay step → sleeping for", sec, "seconds");
 
       await new Promise(resolve => setTimeout(resolve, sec * 1000));
@@ -116,7 +179,6 @@ Do not say you lack memory.`;
       };
     }
 
-
     // ----- HTTP -----
     if (step.type === "http") {
       let parsedBody = null;
@@ -126,7 +188,6 @@ Do not say you lack memory.`;
         try {
           parsedBody = JSON.parse(interpolated);
         } catch (err) {
-          // fallback to raw string if JSON parse fails
           parsedBody = interpolated;
         }
       }
@@ -139,7 +200,6 @@ Do not say you lack memory.`;
         timeout: step.timeout || 30000,
         validateStatus: () => true,
       });
-
 
       return {
         stepId: step.stepId || null,
@@ -208,183 +268,196 @@ Do not say you lack memory.`;
     if (step.type === "file") {
       const action = (step.action || "read").toLowerCase();
 
-      const resolvedPath = step.path
+      const requestedPath = step.path
         ? interpolate(step.path, context)
-        : `runtime/stepName_${step.name}_TaskId_${context.taskId}.txt`;
+        : `stepName_${step.name}_TaskId_${context.taskId}.txt`;
 
-      const outPath = path.resolve(process.cwd(), resolvedPath);
-      const dir = path.dirname(outPath);
-      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      let outPath;
+
+      try {
+        outPath = resolveWorkflowFilePath(requestedPath);
+      } catch (err) {
+        return {
+          stepId: step.stepId,
+          type: "file",
+          tool: "file",
+          input: { action, path: requestedPath },
+          output: err.message,
+          success: false,
+          timestamp: new Date(),
+        };
+      }
 
       const content = interpolate(step.content || "", context);
+      const { runToolInSandbox } = require("../tools/registry");
 
-      // WRITE
-      if (action === "write") {
-        fs.writeFileSync(outPath, content, "utf8");
-
-        return {
-          stepId: step.stepId,
-          type: "file",
-          tool: "file",
-          input: { action, path: outPath, content },
-          output: { path: outPath },
-          success: true,
-          timestamp: new Date(),
-        };
-      }
-
-      // APPEND
-      if (action === "append") {
-        fs.appendFileSync(outPath, content + "\n", "utf8");
-
-        return {
-          stepId: step.stepId,
-          type: "file",
-          tool: "file",
-          input: { action, path: outPath, content },
-          output: { path: outPath },
-          success: true,
-          timestamp: new Date(),
-        };
-      }
-
-      // READ
-      if (action === "read") {
-        if (!fs.existsSync(outPath)) {
+      try {
+        if (action === "write") {
+          const res = await runToolInSandbox("fileTool", "write", [resolvedPath, content]);
           return {
             stepId: step.stepId,
             type: "file",
             tool: "file",
-            input: { action, path: outPath },
-            output: "File not found",
-            success: false,
+            input: { action, path: resolvedPath, content },
+            output: { path: res.path },
+            success: true,
             timestamp: new Date(),
           };
         }
 
-        const contents = fs.readFileSync(outPath, "utf8");
+        if (action === "append") {
+          const res = await runToolInSandbox("fileTool", "append", [resolvedPath, content]);
+          return {
+            stepId: step.stepId,
+            type: "file",
+            tool: "file",
+            input: { action, path: resolvedPath, content },
+            output: { path: res.path },
+            success: true,
+            timestamp: new Date(),
+          };
+        }
+
+        if (action === "read") {
+          const res = await runToolInSandbox("fileTool", "read", [resolvedPath]);
+          return {
+            stepId: step.stepId,
+            type: "file",
+            tool: "file",
+            input: { action, path: resolvedPath },
+            output: res,
+            success: true,
+            timestamp: new Date(),
+          };
+        }
 
         return {
           stepId: step.stepId,
           type: "file",
           tool: "file",
-          input: { action, path: outPath },
-          output: contents,
-          success: true,
+          input: { action },
+          output: `Unknown file action: ${action}`,
+          success: false,
+          timestamp: new Date(),
+        };
+      } catch (err) {
+        return {
+          stepId: step.stepId,
+          type: "file",
+          tool: "file",
+          input: { action, path: resolvedPath },
+          output: err.message,
+          success: false,
           timestamp: new Date(),
         };
       }
-
-      return {
-        stepId: step.stepId,
-        type: "file",
-        tool: "file",
-        input: { action },
-        output: `Unknown file action: ${action}`,
-        success: false,
-        timestamp: new Date(),
-      };
     }
 
     // ----- BROWSER -----
     if (step.type === "browser") {
-      const puppeteer = require("puppeteer");
       const action = (step.action || "screenshot").toLowerCase();
       const url = interpolate(step.url || "", context);
+      const { runToolInSandbox } = require("../tools/registry");
 
-      const browser = await puppeteer.launch({
-        headless: process.env.PUPPETEER_HEADLESS !== "false",
-        args: ["--no-sandbox", "--disable-setuid-sandbox"],
-      });
+      try {
+        if (action === "screenshot") {
+          const outPath = path.join(
+            "runtime",
+            `screenshot_${context.taskId}_${Date.now()}.png`
+          );
 
-      const page = await browser.newPage();
-      await page.setViewport({ width: 1280, height: 800 });
-      await page.goto(url, { waitUntil: "networkidle2", timeout: 30000 });
+          const res = await runToolInSandbox("browserTool", "screenshot", [url, { path: outPath }]);
 
-      if (action === "screenshot") {
-        const runtimeDir = path.resolve(process.cwd(), "runtime");
-        if (!fs.existsSync(runtimeDir))
-          fs.mkdirSync(runtimeDir, { recursive: true });
+          return {
+            stepId: step.stepId,
+            type: "browser",
+            tool: "browser",
+            input: { action, url },
+            output: { path: res.path },
+            success: true,
+            timestamp: new Date(),
+          };
+        }
 
-        const outPath = path.join(
-          runtimeDir,
-          `screenshot_${context.taskId}_${Date.now()}.png`
-        );
+        if (action === "evaluate") {
+          const userCode = step.code || "return document.title;";
 
-        await page.screenshot({ path: outPath, fullPage: true });
-        await browser.close();
+          const res = await runToolInSandbox("browserTool", "evaluate", [url, userCode]);
+          const result = res.result;
 
+          return {
+            stepId: step.stepId,
+            type: "browser",
+            tool: "browser",
+            input: { action, url, code: userCode },
+            output: result,
+            success: !result?.error,
+            timestamp: new Date(),
+          };
+        }
+
+        return {
+          stepId: step.stepId,
+          type: "browser",
+          tool: "browser",
+          input: { action },
+          output: `Unknown browser action: ${action}`,
+          success: false,
+          timestamp: new Date(),
+        };
+      } catch (err) {
         return {
           stepId: step.stepId,
           type: "browser",
           tool: "browser",
           input: { action, url },
-          output: { path: outPath },
-          success: true,
+          output: err.message,
+          success: false,
           timestamp: new Date(),
         };
       }
-
-      if (action === "evaluate") {
-        const userCode = step.code || "return document.title;";
-
-        const result = await page.evaluate((code) => {
-          try {
-            // Wrap inside function so "return" works
-            const fn = new Function(code);
-            return fn();
-          } catch (e) {
-            return { error: e.message };
-          }
-        }, userCode);
-
-        await browser.close();
-
-        return {
-          stepId: step.stepId,
-          type: "browser",
-          tool: "browser",
-          input: { action, url, code: userCode },
-          output: result,
-          success: !result?.error,
-          timestamp: new Date(),
-        };
-      }
-
-      await browser.close();
-
-      return {
-        stepId: step.stepId,
-        type: "browser",
-        tool: "browser",
-        input: { action },
-        output: `Unknown browser action: ${action}`,
-        success: false,
-        timestamp: new Date(),
-      };
     }
 
     // ----- DOCUMENT QUERY -----
     if (step.type === "document_query") {
-
       const { queryDocument } = require("../services/documentService");
 
       const documentId = step.documentId;
       const query = interpolate(step.query || "", context);
+      const requestedTopK = step.topK || 3;
 
       const chunks = await queryDocument(
         agent,
         context.userId,
         documentId,
         query,
-        step.topK || 3
+        requestedTopK
       );
+
+      // 📊 Capture RAG chunk retrieval telemetry for the insights engine
+      const RELEVANT_SIMILARITY_THRESHOLD = 0.7;
+      const chunkScores = chunks.map((c) =>
+        typeof c.score === "number" ? c.score : 0
+      );
+      const ragAverageSimilarity =
+        chunkScores.length > 0
+          ? chunkScores.reduce((acc, s) => acc + s, 0) / chunkScores.length
+          : 0;
+      const relevantChunksCount = chunkScores.filter(
+        (s) => s >= RELEVANT_SIMILARITY_THRESHOLD
+      ).length;
+
+      const ragMetrics = {
+        topK: requestedTopK,
+        retrievedChunksCount: chunks.length,
+        averageSimilarity: Math.round(ragAverageSimilarity * 1000) / 1000,
+        relevantChunksCount
+      };
 
       let contextText = chunks
         .map((c, i) => `Chunk ${i + 1}:\n${c.content}`)
         .join("\n\n");
 
-      // prevent very large prompts
       const MAX_CONTEXT = 3000;
       if (contextText.length > MAX_CONTEXT) {
         contextText = contextText.slice(0, MAX_CONTEXT);
@@ -412,6 +485,10 @@ ${query}
         temperature: agent?.config?.temperature
       });
 
+      console.log(
+        `📄 RAG query: topK=${requestedTopK}, retrieved=${chunks.length}, relevant=${relevantChunksCount}, avgSimilarity=${ragMetrics.averageSimilarity}`
+      );
+
       return {
         stepId: step.stepId,
         type: "document_query",
@@ -419,7 +496,8 @@ ${query}
         input: query,
         output: llmRes.text,
         success: true,
-        timestamp: new Date()
+        timestamp: new Date(),
+        metrics: ragMetrics
       };
     }
 
@@ -484,7 +562,6 @@ false
           if (text.includes("positive")) result = true;
           else if (text.includes("negative")) result = false;
 
-          // 🔥 AI fallback
           if (result === null) {
             const classification = await runLLM(
               `
@@ -539,10 +616,134 @@ ${rawOutput}
         tool: "switch",
         input: output,
         output: output,
-        caseValue: output, // 🔥 KEY FIX
+        caseValue: output,
         success: true,
         timestamp: new Date(),
       };
+    }
+
+    // ----- MCP -----
+    if (step.type === "mcp") {
+      try {
+        const execution = await invokeMcpTool({
+          userId: context.userId,
+          serverId: step.serverId,
+          toolName: step.toolName,
+          argumentsInput: step.arguments,
+          context,
+          interpolate,
+          timeoutMs: step.timeoutMs,
+        });
+
+        return {
+          stepId: step.stepId || null,
+          type: "mcp",
+          tool: "mcp",
+          input: {
+            serverId: step.serverId,
+            toolName: step.toolName,
+            arguments: execution.args,
+          },
+          output: execution.result,
+          serverId: step.serverId,
+          toolName: step.toolName,
+          success: true,
+          timestamp: new Date(),
+        };
+      } catch (err) {
+        return {
+          stepId: step.stepId || null,
+          type: "mcp",
+          tool: "mcp",
+          input: {
+            serverId: step.serverId,
+            toolName: step.toolName,
+          },
+          output: err.message,
+          serverId: step.serverId,
+          toolName: step.toolName,
+          success: false,
+          timestamp: new Date(),
+        };
+      }
+    }
+
+    // ----- GITHUB -----
+    if (step.type === "github") {
+      try {
+        const output = await runGitHub(step, context, interpolate);
+        return {
+          stepId: step.stepId || null,
+          type: "github",
+          tool: "github",
+          input: { action: step.action },
+          output,
+          success: true,
+          timestamp: new Date(),
+        };
+      } catch (err) {
+        return {
+          stepId: step.stepId || null,
+          type: "github",
+          tool: "github",
+          input: { action: step.action },
+          output: err.message,
+          success: false,
+          timestamp: new Date(),
+        };
+      }
+    }
+
+    // ----- SLACK -----
+    if (step.type === "slack") {
+      try {
+        const output = await runSlack(step, context, interpolate);
+        return {
+          stepId: step.stepId || null,
+          type: "slack",
+          tool: "slack",
+          input: { action: step.action },
+          output,
+          success: true,
+          timestamp: new Date(),
+        };
+      } catch (err) {
+        return {
+          stepId: step.stepId || null,
+          type: "slack",
+          tool: "slack",
+          input: { action: step.action },
+          output: err.message,
+          success: false,
+          timestamp: new Date(),
+        };
+      }
+    }
+
+    // ----- DISCORD -----
+    if (step.type === "discord") {
+      try {
+        const output = await runDiscord(step, context, interpolate);
+        return {
+          stepId: step.stepId || null,
+          type: "discord",
+          tool: "discord",
+          input: { action: step.action },
+          output,
+          success: true,
+          timestamp: new Date(),
+        };
+      } catch (err) {
+        return {
+          stepId: step.stepId || null,
+          type: "discord",
+          tool: "discord",
+          input: { action: step.action },
+          output: err.message,
+          success: false,
+          timestamp: new Date(),
+        };
+      }
     }
 
     // unknown step type
@@ -556,7 +757,6 @@ ${rawOutput}
       timestamp: new Date()
     };
   } catch (err) {
-    // return error object (don't leak secrets)
     return {
       stepId: step.stepId || null,
       type: step.type || "unknown",
@@ -568,7 +768,6 @@ ${rawOutput}
       timestamp: new Date()
     };
   } finally {
-    // you can log step duration if needed
     // const duration = Date.now() - start;
   }
 }
@@ -580,13 +779,14 @@ function interpolate(template = "", context = {}) {
   if (typeof template !== "string") return template;
   return template.replace(/\{\{(.*?)\}\}/g, (_, key) => {
     const k = key.trim();
-    // support nested keys like input.text
     const parts = k.split(".");
     let val = context;
+
     for (const p of parts) {
       if (val === undefined || val === null) break;
       val = val[p];
     }
+
     if (val === undefined || val === null) return "";
 
     if (typeof val === "object") {
@@ -623,7 +823,6 @@ function evaluateExpression(expression, context) {
       return val;
     });
 
-    // ALSO normalize literals inside expression
     const cleanedExpression = replaced.replace(/'([^']+)'/g, (_, val) => {
       return `"${normalize(val)}"`;
     });

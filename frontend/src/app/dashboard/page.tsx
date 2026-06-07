@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +8,7 @@ import { AuthGuard } from "@/components/auth/auth-guard";
 import { Activity, Workflow, ListChecks, Bot, Calendar } from "lucide-react";
 import { useAssistantContext } from "@/context/assistant-context";
 import { useApi } from "@/hooks/useApi";
+import { WorkflowList } from "@/components/workflow-list";
 
 /* -----------------------------
    Types
@@ -68,18 +69,26 @@ function ActivitySkeleton() {
 
 function DashboardPageInner() {
   const { setContext, clearContext } = useAssistantContext();
-  const [now] = useState(() => Date.now());
+  
+  // Hydration safety fixes restored
+  const [now, setNow] = useState<number | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
 
-  const { data: stats, loading: statsLoading } =
-    useApi<DashboardStats>("/dashboard/stats");
+  useEffect(() => {
+    setNow(Date.now());
+    setIsMounted(true);
+  }, []);
 
-  const { data: tasks, loading: tasksLoading } =
-  useApi<Task[]>("/tasks");
+  const { data: stats, loading: statsLoading } = useApi<DashboardStats>("/dashboard/stats");
+  const { data: tasks, loading: tasksLoading } = useApi<Task[]>("/tasks");
+  const { data: workflowsResponse, loading: workflowsLoading } = useApi<any>("/workflows");
 
-  const recentTasks = tasks?.slice(0, 8) ?? [];
-  console.log("statsLoading: ", statsLoading);
-  console.log("stats: ", stats);
-  console.log("tasksData: ", recentTasks);
+  // Safely extract arrays from backend payload
+  const workflowsArray = Array.isArray(workflowsResponse) 
+    ? workflowsResponse 
+    : (workflowsResponse?.data || workflowsResponse?.workflows || []);
+
+  const recentTasks = useMemo(() => tasks?.slice(0, 8) ?? [], [tasks]);
 
   /* -----------------------------
      Assistant context
@@ -98,12 +107,13 @@ function DashboardPageInner() {
     });
 
     return () => clearContext();
-  }, [stats, recentTasks.length, statsLoading]);
+  }, [stats, recentTasks, statsLoading, setContext, clearContext]);
 
   /* -----------------------------
      Helpers
   ------------------------------ */
-  function timeAgo(dateString: string) {
+  const timeAgo = useCallback((dateString: string) => {
+    if (!now) return "";
     const diff = now - new Date(dateString).getTime();
     const minutes = Math.floor(diff / 60000);
 
@@ -115,9 +125,9 @@ function DashboardPageInner() {
 
     const days = Math.floor(hours / 24);
     return `${days} day${days > 1 ? "s" : ""} ago`;
-  }
+  }, [now]);
 
-  function getStatusColor(status: Task["status"]) {
+  const getStatusColor = useCallback((status: Task["status"]) => {
     switch (status) {
       case "completed":
         return "bg-success/20 text-success border-success/30";
@@ -128,19 +138,21 @@ function DashboardPageInner() {
       default:
         return "bg-muted text-muted-foreground";
     }
-  }
+  }, []);
 
-  const statsUI = [
+  const statsUI = useMemo(() => [
     { label: "Total Workflows", value: stats?.workflows ?? 0, icon: Workflow },
     { label: "Total Tasks", value: stats?.tasks ?? 0, icon: ListChecks },
     { label: "Running Tasks", value: stats?.runningTasks ?? 0, icon: Activity },
     { label: "Active Agents", value: stats?.agents ?? 0, icon: Bot },
     { label: "Schedules", value: stats?.schedules ?? 0, icon: Calendar },
-  ];
+  ], [stats]);
 
   /* -----------------------------
      UI
   ------------------------------ */
+  if (!isMounted) return null;
+
   return (
     <div className="flex min-h-screen">
       <AppSidebar />
@@ -177,46 +189,64 @@ function DashboardPageInner() {
                   ))}
             </div>
 
-            {/* Recent Activity */}
-            <Card className="p-6">
-              <h2 className="mb-4 text-xl font-semibold">Recent Activity</h2>
+            {/* Split Grid Layout */}
+            <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
 
-              <div className="space-y-3">
-                {tasksLoading ? (
-                  Array.from({ length: 5 }).map((_, i) => (
-                    <ActivitySkeleton key={i} />
-                  ))
-                ) : recentTasks.length > 0 ? (
-                  recentTasks.map((task) => (
-                    <div
-                      key={task._id}
-                      className="flex items-center justify-between rounded-lg border border-border bg-card p-4 hover:bg-accent/50"
-                    >
-                      <div className="flex items-center gap-4">
-                        <Badge className={getStatusColor(task.status)}>
-                          {task.status}
-                        </Badge>
-
-                        <div>
-                          <p className="font-medium">{task.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {task.metadata?.runningBy ?? "Unknown Agent"}
-                          </p>
-                        </div>
-                      </div>
-
-                      <span className="text-sm text-muted-foreground">
-                        {timeAgo(task.startedAt)}
-                      </span>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-muted-foreground opacity-70">
-                    No recent activity
-                  </p>
-                )}
+              {/* Left Side: Workflows */}
+              <div className="lg:col-span-2">
+                <Card className="p-6">
+                  <h2 className="mb-4 text-xl font-semibold">Your Workflows</h2>
+                  <WorkflowList
+                    workflows={workflowsArray}
+                    loading={workflowsLoading}
+                  />
+                </Card>
               </div>
-            </Card>
+
+              {/* Right Side: Recent Activity */}
+              <div className="lg:col-span-1">
+                <Card className="p-6">
+                  <h2 className="mb-4 text-xl font-semibold">Recent Activity</h2>
+
+                  <div className="space-y-3">
+                    {tasksLoading ? (
+                      Array.from({ length: 5 }).map((_, i) => (
+                        <ActivitySkeleton key={i} />
+                      ))
+                    ) : recentTasks.length > 0 ? (
+                      recentTasks.map((task) => (
+                        <div
+                          key={task._id}
+                          className="flex items-center justify-between rounded-lg border border-border bg-card p-4 hover:bg-accent/50"
+                        >
+                          <div className="flex items-center gap-4">
+                            <Badge className={getStatusColor(task.status)}>
+                              {task.status}
+                            </Badge>
+
+                            <div>
+                              <p className="font-medium">{task.name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {task.metadata?.runningBy ?? "Unknown Agent"}
+                              </p>
+                            </div>
+                          </div>
+
+                          <span className="text-sm text-muted-foreground">
+                            {timeAgo(task.startedAt)}
+                          </span>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-muted-foreground opacity-70">
+                        No recent activity
+                      </p>
+                    )}
+                  </div>
+                </Card>
+              </div>
+              
+            </div>
           </>
         </div>
       </main>

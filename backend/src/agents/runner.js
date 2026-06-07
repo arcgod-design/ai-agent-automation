@@ -129,13 +129,18 @@ async function runWorkerLoop() {
         Array.isArray(task.steps) && task.steps.length > 0
           ? task.steps
           : Array.isArray(task.metadata?.steps)
-            ? task.metadata.steps
-            : [];
+            && task.metadata.steps.length > 0
+              ? task.metadata.steps
+              : Array.isArray(workflow?.metadata?.steps)
+                ? workflow.metadata.steps
+                : [];
 
       const edges =
-        task.metadata?.edges ||
-        workflow?.metadata?.edges ||
-        [];
+        Array.isArray(task.metadata?.edges) && task.metadata.edges.length > 0
+          ? task.metadata.edges
+          : Array.isArray(workflow?.metadata?.edges)
+            ? workflow.metadata.edges
+            : [];
       let success = true;
 
       // console.log("🧩 STEPS:", steps);
@@ -176,11 +181,15 @@ async function runWorkerLoop() {
 
           visited.add(getStepId(currentStep));
 
+          // ⏱️ Measure individual step execution duration
+          const stepStart = Date.now();
           const result = await executeStep(currentStep, context, agent);
+          const stepDurationMs = Date.now() - stepStart;
 
-          // 🔥 attach debug info directly to result
+          // 🔥 attach debug info and telemetry directly to result
           result.name = currentStep.name;
           result.type = currentStep.type;
+          result.durationMs = stepDurationMs;
 
           await Task.findByIdAndUpdate(task._id, {
             $push: { stepResults: result },
