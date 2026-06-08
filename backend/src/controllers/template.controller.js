@@ -89,8 +89,10 @@ async function importTemplate(req, res) {
             name: template.name,
             description: template.description,
             userId: req.user._id,
+            agentId: template.agentId || null,
             metadata: {
                 steps,
+                edges: template.edges || [],
             },
         });
 
