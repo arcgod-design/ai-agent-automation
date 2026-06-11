@@ -51,6 +51,7 @@ import { motion } from "framer-motion";
 import { useAssistantContext } from "@/context/assistant-context";
 import { useToast } from "@/hooks/use-toast";
 import { apiUrl } from "@/lib/api";
+import { WorkflowPayload as Workflow, WorkflowAgent as Agent } from "@/types/workflow";
 import {
   Bot,
   Check,
@@ -81,20 +82,7 @@ const SORT_OPTIONS = [
 ];
 // ───────────────────────────────────────────────────────────────────
 
-type Agent = {
-  _id: string;
-  name: string;
-};
 
-interface Workflow {
-  _id: string;
-  name: string;
-  description?: string;
-  status: "idle" | "running" | "failed" | "completed";
-  agentId?: string;
-  createdAt?: string;
-  updatedAt?: string; // Added updatedAt
-}
 
 type Template = {
   id: string;
@@ -277,14 +265,19 @@ const WorkflowCard = memo(
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <Link href={`/workflows/${workflow._id}/builder`}>
-                  <DropdownMenuItem
-                    onClick={(e) => {
-                      e.stopPropagation();
-                    }}
-                  >
-                    Edit Workflow Details
+                  <DropdownMenuItem>
+                    Configure Steps
                   </DropdownMenuItem>
                 </Link>
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onEdit(workflow);
+                  }}
+                >
+                  Edit Workflow Details
+                </DropdownMenuItem>
                 <DropdownMenuItem
                   className="text-destructive"
                   onClick={(e) => {
@@ -768,16 +761,16 @@ export default function WorkflowsPage() {
                 ) : (
                   <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
                     {filteredWorkflows.map((workflow) => (
-                      <WorkflowCard
-                        key={workflow._id}
-                        workflow={workflow}
-                        agentName={getAgentName(workflow.agentId)}
-                        isCopied={copiedId === workflow._id}
-                        onCopy={copyId}
-                        onEdit={handleEditWorkflow}
-                        onDelete={handleDeleteClick}
-                        onUpdate={fetchWorkflows}
-                      />
+                     <WorkflowCard
+  key={workflow._id}
+  workflow={workflow}
+  agentName={getAgentName(workflow.agentId)}
+  isCopied={copiedId === workflow._id}
+  onCopy={copyId}
+  onEdit={handleEditWorkflow}
+  onDelete={handleDeleteClick}
+  onUpdate={fetchWorkflows}
+/>
                     ))}
                   </div>
                 )}
