@@ -1,11 +1,21 @@
 "use client";
 
-import { useEffect, useState, FormEvent, useCallback, memo, useMemo } from "react";
+import {
+  useEffect,
+  useState,
+  FormEvent,
+  useCallback,
+  memo,
+  useMemo,
+} from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { AppSidebar } from "@/components/app-sidebar";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useAssistantContext } from "@/context/assistant-context";
 import { Card } from "@/components/ui/card";
 import {
   Dialog,
@@ -209,7 +219,9 @@ const WorkflowCard = memo(
                     className="text-lg font-semibold bg-background border border-input rounded px-2 py-1 flex-1"
                   />
                   {isSaving && (
-                    <span className="text-sm text-muted-foreground">Saving...</span>
+                    <span className="text-sm text-muted-foreground">
+                      Saving...
+                    </span>
                   )}
                 </div>
               ) : (
@@ -281,7 +293,11 @@ const WorkflowCard = memo(
           </div>
 
           <div className="mt-4 flex flex-wrap items-center gap-2 overflow-hidden opacity-0 max-h-0 transition-all duration-200 group-hover:opacity-100 group-hover:max-h-24">
-            <Button variant="outline" size="sm" onClick={() => onEdit(workflow)}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onEdit(workflow)}
+            >
               Edit details
             </Button>
             <Button
@@ -342,7 +358,7 @@ const WorkflowCard = memo(
         </Card>
       </motion.div>
     );
-  }
+  },
 );
 
 WorkflowCard.displayName = "WorkflowCard";
@@ -352,7 +368,9 @@ export default function WorkflowsPage() {
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState<false | "blank" | "template">(false);
   const [editingWorkflow, setEditingWorkflow] = useState<Workflow | null>(null);
-  const [workflowToDelete, setWorkflowToDelete] = useState<Workflow | null>(null);
+  const [workflowToDelete, setWorkflowToDelete] = useState<Workflow | null>(
+    null,
+  );
   const [agents, setAgents] = useState<Agent[]>([]);
   const [agentMap, setAgentMap] = useState<Record<string, string>>({});
   const { addToast } = useToast();
@@ -361,8 +379,27 @@ export default function WorkflowsPage() {
 
   // ─── Filter State ───
   const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState("newest");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const statusFromUrl = searchParams.get("status");
+
+  const statusFilter =
+    statusFromUrl && STATUS_OPTIONS.includes(statusFromUrl)
+      ? statusFromUrl
+      : "all";
+  const handleStatusChange = (status: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+
+    if (status === "all") {
+      params.delete("status");
+    } else {
+      params.set("status", status);
+    }
+
+    router.replace(`${pathname}?${params.toString()}`);
+  };
   const debouncedQuery = useDebounce(query, 300);
 
   const fetchAgents = useCallback(async () => {
@@ -421,7 +458,7 @@ export default function WorkflowsPage() {
       if (!agentId) return "No agent";
       return agentMap[agentId] ?? "Unknown agent";
     },
-    [agentMap]
+    [agentMap],
   );
 
   useEffect(() => {
@@ -455,7 +492,7 @@ export default function WorkflowsPage() {
         });
       }
     },
-    [addToast]
+    [addToast],
   );
 
   const handleEditWorkflow = useCallback((workflow: Workflow) => {
@@ -469,7 +506,9 @@ export default function WorkflowsPage() {
     if (debouncedQuery.trim()) {
       const q = debouncedQuery.toLowerCase();
       result = result.filter(
-        (w) => w.name?.toLowerCase().includes(q) || w.description?.toLowerCase().includes(q)
+        (w) =>
+          w.name?.toLowerCase().includes(q) ||
+          w.description?.toLowerCase().includes(q),
       );
     }
 
@@ -481,30 +520,49 @@ export default function WorkflowsPage() {
       // 1. Handle "Recently Updated" sorting
       if (sortBy === "updated") {
         // Fallback: If updatedAt is missing, use createdAt. If both missing, use MongoID.
-        const updatedA = a.updatedAt ? new Date(a.updatedAt).getTime() : (a.createdAt ? new Date(a.createdAt).getTime() : parseInt(a._id.substring(0, 8), 16));
-        const updatedB = b.updatedAt ? new Date(b.updatedAt).getTime() : (b.createdAt ? new Date(b.createdAt).getTime() : parseInt(b._id.substring(0, 8), 16));
+        const updatedA = a.updatedAt
+          ? new Date(a.updatedAt).getTime()
+          : a.createdAt
+            ? new Date(a.createdAt).getTime()
+            : parseInt(a._id.substring(0, 8), 16);
+        const updatedB = b.updatedAt
+          ? new Date(b.updatedAt).getTime()
+          : b.createdAt
+            ? new Date(b.createdAt).getTime()
+            : parseInt(b._id.substring(0, 8), 16);
         return updatedB - updatedA; // Sort descending (newest updates first)
       }
 
       // 2. Handle standard Created dates (newest/oldest)
-      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : parseInt(a._id.substring(0, 8), 16);
-      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : parseInt(b._id.substring(0, 8), 16);
+      const dateA = a.createdAt
+        ? new Date(a.createdAt).getTime()
+        : parseInt(a._id.substring(0, 8), 16);
+      const dateB = b.createdAt
+        ? new Date(b.createdAt).getTime()
+        : parseInt(b._id.substring(0, 8), 16);
 
       if (sortBy === "newest") return dateB - dateA;
       if (sortBy === "oldest") return dateA - dateB;
-      if (sortBy === "alphabetical") return (a.name || "").localeCompare(b.name || "");
+      if (sortBy === "alphabetical")
+        return (a.name || "").localeCompare(b.name || "");
       return 0;
     });
 
     return result;
   }, [workflows, debouncedQuery, statusFilter, sortBy]);
 
-  const hasActiveFilters = query || statusFilter !== "all" || sortBy !== "newest";
+  const hasActiveFilters =
+    query || statusFilter !== "all" || sortBy !== "newest";
 
   function clearFilters() {
     setQuery("");
-    setStatusFilter("all");
     setSortBy("newest");
+
+    const params = new URLSearchParams(searchParams.toString());
+
+    params.delete("status");
+
+    router.replace(`${pathname}?${params.toString()}`);
   }
 
   return (
@@ -543,32 +601,74 @@ export default function WorkflowsPage() {
             </div>
 
             {loading ? (
-              <p className="opacity-70">Loading workflows...</p>
-            ) : workflows.length === 0 ? (
-              // Hard Empty State (No workflows exist in database at all)
-              <div className="py-12 max-w-2xl mx-auto">
-                <Empty>
-                  <EmptyHeader>
-                    <EmptyMedia variant="icon">
-                      <GitFork />
-                    </EmptyMedia>
-                    <EmptyTitle>No workflows yet</EmptyTitle>
-                    <EmptyDescription>
-                      Create your first automated workflow or build from a
-                      template configuration to begin setting up agent jobs.
-                    </EmptyDescription>
-                  </EmptyHeader>
-                  <EmptyContent>
-                    <div className="flex gap-4">
-                      <Button onClick={() => setOpen("blank")}>
-                        Create Blank Workflow
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={() => setOpen("template")}
-                      >
-                        Choose Template
-                      </Button>
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <Card key={i} className="p-6">
+                    <div className="space-y-4">
+                      <Skeleton className="h-6 w-3/4" />
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-5/6" />
+                      <Skeleton className="h-4 w-1/2" />
+                      <Skeleton className="h-8 w-24" />
+                    </div>
+                 </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {workflows.map((workflow) => (
+                  <Card key={workflow._id} className="p-6">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <Link
+                          href={`/workflows/${workflow._id}`}
+                          className="text-lg font-semibold hover:text-primary"
+                        >
+                          {workflow.name}
+                        </Link>
+
+                        {workflow.description && (
+                          <p className="mt-2 text-sm text-muted-foreground">
+                            {workflow.description}
+                          </p>
+                        )}
+                      </div>
+
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+
+                        <DropdownMenuContent align="end">
+                          <Link href={`/workflows/${workflow._id}/builder`}>
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setEditingWorkflow(workflow);
+                              }}
+                            >
+                              Edit Workflow Details
+                            </DropdownMenuItem>
+                          </Link>
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleDeleteWorkflow(workflow._id);
+                            }}
+                          >
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </EmptyContent>
                 </Empty>
@@ -588,7 +688,11 @@ export default function WorkflowsPage() {
                       stroke="currentColor"
                       strokeWidth={2}
                     >
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"
+                      />
                     </svg>
                     <Input
                       type="text"
@@ -601,7 +705,7 @@ export default function WorkflowsPage() {
 
                   <select
                     value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
+                    onChange={(e) => handleStatusChange(e.target.value)}
                     className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 capitalize"
                   >
                     {STATUS_OPTIONS.map((s) => (
@@ -626,10 +730,14 @@ export default function WorkflowsPage() {
 
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
                   <span>
-                    Showing {filteredWorkflows.length} of {workflows.length} workflows
+                    Showing {filteredWorkflows.length} of {workflows.length}{" "}
+                    workflows
                   </span>
                   {hasActiveFilters && (
-                    <button onClick={clearFilters} className="text-primary hover:underline">
+                    <button
+                      onClick={clearFilters}
+                      className="text-primary hover:underline"
+                    >
                       Clear filters
                     </button>
                   )}
@@ -642,23 +750,28 @@ export default function WorkflowsPage() {
                     <p className="mt-1 text-xs text-muted-foreground">
                       Try adjusting your search or filters.
                     </p>
-                    <Button variant="ghost" size="sm" className="mt-4" onClick={clearFilters}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="mt-4"
+                      onClick={clearFilters}
+                    >
                       Clear filters
                     </Button>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
                     {filteredWorkflows.map((workflow) => (
-                      <WorkflowCard
-                        key={workflow._id}
-                        workflow={workflow}
-                        agentName={getAgentName(workflow.agentId)}
-                        isCopied={copiedId === workflow._id}
-                        onCopy={copyId}
-                        onEdit={handleEditWorkflow}
-                        onDelete={handleDeleteClick}
-                        onUpdate={fetchWorkflows}
-                      />
+                     <WorkflowCard
+  key={workflow._id}
+  workflow={workflow}
+  agentName={getAgentName(workflow.agentId)}
+  isCopied={copiedId === workflow._id}
+  onCopy={copyId}
+  onEdit={handleEditWorkflow}
+  onDelete={handleDeleteClick}
+  onUpdate={fetchWorkflows}
+/>
                     ))}
                   </div>
                 )}
@@ -923,7 +1036,11 @@ function DeleteWorkflowModal({
           <Button variant="outline" onClick={close} disabled={loading}>
             Cancel
           </Button>
-          <Button variant="destructive" onClick={confirmDelete} disabled={loading}>
+          <Button
+            variant="destructive"
+            onClick={confirmDelete}
+            disabled={loading}
+          >
             {loading ? "Deleting..." : "Delete"}
           </Button>
         </DialogFooter>
