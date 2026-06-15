@@ -4,7 +4,6 @@ const path = require("path");
 
 /**
  * Centralized dynamic tool dictionary tracking mapping properties to sandboxed files and execution methods.
- * Adding a tool like HackerNews, Slack, or GitHub now only requires adding one line here.
  */
 const toolRegistryMap = {
   email: { toolName: "emailTool", functionName: "sendMail" },
@@ -27,10 +26,6 @@ function hasTool(type) {
 
 /**
  * Dynamic Tool Dispatcher executing tasks under a uniform tool contract interface.
- * @param {string} type - The incoming step type descriptor
- * @param {Object} step - The layout properties configuration definition payload
- * @param {Object} context - The operational workflow active run context variables
- * @returns {Promise<any>}
  */
 async function dispatchTool(type, step, context) {
   const config = toolRegistryMap[type.toLowerCase()];
@@ -38,8 +33,43 @@ async function dispatchTool(type, step, context) {
     throw new Error(`Execution Contract Violation: Missing tool registration for type '${type}'`);
   }
 
-  // Passing arguments cleanly down to the underlying sandbox process boundary matching the run(step, context) specification contract
-  return await runToolInSandbox(config.toolName, config.functionName, [step, context]);
+  // Determine the correct target method inside the sandboxed file dynamically
+  let targetFunction = config.functionName;
+  let executionArgs = [step, context];
+
+  const lowerType = type.toLowerCase();
+  if (lowerType === "file" || lowerType === "browser") {
+    // Dynamically match the sub-action method (e.g. 'write', 'append', 'read', 'screenshot', 'evaluate')
+    targetFunction = (step.action || "read").toLowerCase();
+    
+    // Pass the required position-based arguments that the underlying tools expect
+    if (lowerType === "file") {
+      const requestedPath = step.path || `stepName_${step.name}_TaskId_${context.taskId}.txt`;
+      const content = step.content || "";
+      executionArgs = targetFunction === "read" ? [requestedPath] : [requestedPath, content];
+    } else if (lowerType === "browser") {
+      const url = step.url || "";
+      if (targetFunction === "screenshot") {
+        const relativeOutPath = `screenshot_${context.taskId}_${Date.now()}.png`;
+        executionArgs = [url, { path: relativeOutPath }];
+      } else if (targetFunction === "evaluate") {
+        const userCode = step.code || 'return document.title;';
+        executionArgs = [url, userCode];
+      }
+    }
+  } else if (lowerType === "email") {
+    // Format the email explicit parameter object expected by emailTool.sendMail
+    targetFunction = "sendMail";
+    executionArgs = [{
+      to: step.to || "",
+      subject: step.subject || "",
+      text: step.text || "",
+      html: step.html || ""
+    }];
+  }
+
+  // Passing arguments cleanly down to the underlying sandbox process boundary matching the run specification contract
+  return await runToolInSandbox(config.toolName, targetFunction, executionArgs);
 }
 
 /**
