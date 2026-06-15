@@ -1,13 +1,13 @@
-const { writeLog } = require("./logger");
-const mongoose = require("mongoose");
-const Task = require("../models/task.model");
-const Workflow = require("../models/workflow.model");
-const SystemSettings = require("../models/systemSettings.model");
-const { claimNextTask, completeTask } = require("./queueService");
-const { executeStep } = require("./executor");
-const telemetryService = require("../services/telemetry.service");
-const WORKER_ID = process.env.WORKER_ID || "agent-1";
-require("dotenv").config();
+const { writeLog } = require('./logger');
+const mongoose = require('mongoose');
+const Task = require('../models/task.model');
+const Workflow = require('../models/workflow.model');
+const SystemSettings = require('../models/systemSettings.model');
+const { claimNextTask, completeTask } = require('./queueService');
+const { executeStep } = require('./executor');
+const telemetryService = require('../services/telemetry.service');
+const WORKER_ID = process.env.WORKER_ID || 'agent-1';
+require('dotenv').config();
 
 /* -------------------------
    Settings cache
@@ -34,10 +34,7 @@ function sleep(ms) {
 async function getGlobalWorkerSettings() {
   const now = Date.now();
 
-  if (
-    cachedWorkerSettings &&
-    now - lastSettingsFetch < SETTINGS_REFRESH_MS
-  ) {
+  if (cachedWorkerSettings && now - lastSettingsFetch < SETTINGS_REFRESH_MS) {
     return cachedWorkerSettings;
   }
 
@@ -49,7 +46,7 @@ async function getGlobalWorkerSettings() {
 
     return cachedWorkerSettings;
   } catch (err) {
-    console.error("⚠️ Failed to load worker settings:", err.message);
+    console.error('⚠️ Failed to load worker settings:', err.message);
     return SAFE_FALLBACK_SETTINGS;
   }
 }
@@ -63,8 +60,8 @@ async function runWorkerLoop() {
   if (isRunningLoop) return;
   isRunningLoop = true;
 
-  console.log("👷 Agent Runner Started… waiting for tasks");
-  writeLog("Runner started", "info", { workerId: WORKER_ID });
+  console.log('👷 Agent Runner Started… waiting for tasks');
+  writeLog('Runner started', 'info', { workerId: WORKER_ID });
 
   while (true) {
     try {
@@ -83,25 +80,23 @@ async function runWorkerLoop() {
       // Mark task running
       // -------------------------
       await Task.findByIdAndUpdate(task._id, {
-        status: "running",
+        status: 'running',
         startedAt: new Date(),
       });
 
       console.log(`📝 Task claimed: ${task._id}`);
-      writeLog("Task claimed", "info", {
+      writeLog('Task claimed', 'info', {
         workerId: WORKER_ID,
         taskId: task._id,
         workflowId: task.workflowId,
       });
 
-      const workflow = task.workflowId
-        ? await Workflow.findById(task.workflowId).lean()
-        : null;
+      const workflow = task.workflowId ? await Workflow.findById(task.workflowId).lean() : null;
 
       let agent = null;
 
       if (workflow?.agentId) {
-        const Agent = require("../models/agent.model");
+        const Agent = require('../models/agent.model');
         agent = await Agent.findById(workflow.agentId).lean();
       }
 
@@ -109,12 +104,12 @@ async function runWorkerLoop() {
       const context = {
         ...(task.input || {}),
         timestampIso: now.toISOString(),
-        timestamp: now.toLocaleString("en-US", {
-          dateStyle: "long",
-          timeStyle: "short",
+        timestamp: now.toLocaleString('en-US', {
+          dateStyle: 'long',
+          timeStyle: 'short',
         }),
-        date: now.toLocaleDateString("en-US", { dateStyle: "long" }),
-        time: now.toLocaleTimeString("en-US", { timeStyle: "short" }),
+        date: now.toLocaleDateString('en-US', { dateStyle: 'long' }),
+        time: now.toLocaleTimeString('en-US', { timeStyle: 'short' }),
         workflow,
         taskId: task._id,
         userId: task.userId,
@@ -127,12 +122,11 @@ async function runWorkerLoop() {
       const steps =
         Array.isArray(task.steps) && task.steps.length > 0
           ? task.steps
-          : Array.isArray(task.metadata?.steps)
-            && task.metadata.steps.length > 0
-              ? task.metadata.steps
-              : Array.isArray(workflow?.metadata?.steps)
-                ? workflow.metadata.steps
-                : [];
+          : Array.isArray(task.metadata?.steps) && task.metadata.steps.length > 0
+            ? task.metadata.steps
+            : Array.isArray(workflow?.metadata?.steps)
+              ? workflow.metadata.steps
+              : [];
 
       const edges =
         Array.isArray(task.metadata?.edges) && task.metadata.edges.length > 0
@@ -144,7 +138,7 @@ async function runWorkerLoop() {
 
       if (steps.length > 0) {
         console.log(`⚙️ Executing ${steps.length} steps…`);
-        writeLog(`Executing ${steps.length} steps`, "info", {
+        writeLog(`Executing ${steps.length} steps`, 'info', {
           workerId: WORKER_ID,
           taskId: task._id,
           workflowId: task.workflowId,
@@ -167,7 +161,7 @@ async function runWorkerLoop() {
 
         if (resumeFromStepId && Array.isArray(task.stepResults) && task.stepResults.length > 0) {
           console.log(`🔄 Resuming task execution path from step: ${resumeFromStepId}`);
-          
+
           task.stepResults.forEach((pastResult) => {
             if (pastResult) {
               context.results.push(pastResult);
@@ -181,7 +175,9 @@ async function runWorkerLoop() {
           currentStep = stepsMap[resumeFromStepId];
 
           if (!currentStep) {
-            console.warn(`⚠️ Target resume step ${resumeFromStepId} not found in graph definition.`);
+            console.warn(
+              `⚠️ Target resume step ${resumeFromStepId} not found in graph definition.`
+            );
           }
         }
 
@@ -191,14 +187,14 @@ async function runWorkerLoop() {
         }
         // -------------------------------------------------------------
 
-        let visited = new Set();
+        const visited = new Set();
         let stepCount = 0;
         const MAX_STEPS = 50;
 
         while (currentStep && stepCount < MAX_STEPS) {
           stepCount++;
           if (stepCount >= MAX_STEPS) {
-            console.warn("⚠️ Max steps reached, stopping execution");
+            console.warn('⚠️ Max steps reached, stopping execution');
             success = false;
           }
 
@@ -227,18 +223,19 @@ async function runWorkerLoop() {
           let nextEdge = null;
 
           // ✅ CONDITION
-          if (currentStep.type === "condition") {
+          if (currentStep.type === 'condition') {
             const branch = result.branch;
             nextEdge = edges.find(
-              (e) =>
-                e.source === getStepId(currentStep) &&
-                e.condition === branch
+              (e) => e.source === getStepId(currentStep) && e.condition === branch
             );
           }
 
           // ✅ SWITCH
-          else if (currentStep.type === "switch") {
-            const normalize = (v) => String(v || "").toLowerCase().trim();
+          else if (currentStep.type === 'switch') {
+            const normalize = (v) =>
+              String(v || '')
+                .toLowerCase()
+                .trim();
             const value = normalize(result.caseValue);
 
             nextEdge = edges.find((e) => {
@@ -248,9 +245,7 @@ async function runWorkerLoop() {
             });
 
             if (!nextEdge) {
-              nextEdge = edges.find(
-                (e) => e.source === getStepId(currentStep) && !e.caseValue
-              );
+              nextEdge = edges.find((e) => e.source === getStepId(currentStep) && !e.caseValue);
             }
           }
 
@@ -265,8 +260,8 @@ async function runWorkerLoop() {
       } else {
         const llmResult = await executeStep(
           {
-            type: "llm",
-            prompt: task.input?.text || "Give a short summary.",
+            type: 'llm',
+            prompt: task.input?.text || 'Give a short summary.',
           },
           context,
           agent
@@ -281,21 +276,16 @@ async function runWorkerLoop() {
 
       await completeTask(task._id, { success });
 
-      const durationMs = task.startedAt
-        ? Date.now() - new Date(task.startedAt).getTime()
-        : 0;
+      const durationMs = task.startedAt ? Date.now() - new Date(task.startedAt).getTime() : 0;
 
-      const stepTypes = context.results.map((result) => result.type || "unknown");
-      telemetryService
-        .recordTaskMetrics({ stepTypes, durationMs })
-        .catch((err) => {
-          console.error("Telemetry failed:", err.message || err);
-        });
+      const stepTypes = context.results.map((result) => result.type || 'unknown');
+      telemetryService.recordTaskMetrics({ stepTypes, durationMs }).catch((err) => {
+        console.error('Telemetry failed:', err.message || err);
+      });
 
       console.log(`✅ Task ${task._id} completed. Success: ${success}`);
-
     } catch (error) {
-      console.error("❌ Worker loop error:", error);
+      console.error('❌ Worker loop error:', error);
       await sleep(SAFE_FALLBACK_SETTINGS.pollIntervalMs);
     }
   }
@@ -304,7 +294,7 @@ async function runWorkerLoop() {
 async function start() {
   if (mongoose.connection.readyState === 0) {
     await mongoose.connect(process.env.MONGO_URI);
-    console.log("📡 MongoDB connected for Agent Runner");
+    console.log('📡 MongoDB connected for Agent Runner');
   }
   runWorkerLoop();
 }
