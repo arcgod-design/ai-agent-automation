@@ -60,6 +60,7 @@ function getLogBadge(log: Log) {
 export default function LogsPage() {
   const [logs, setLogs] = useState<Log[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [autoScroll, setAutoScroll] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
   const { setContext, clearContext } = useAssistantContext();
@@ -67,6 +68,7 @@ export default function LogsPage() {
   async function fetchLogs(showLoader = false) {
     try {
       if (showLoader) setLoading(true);
+      setError("");
 
       const res = await fetch(apiUrl("/logs?limit=200"), {
         headers: {
@@ -77,6 +79,10 @@ export default function LogsPage() {
 
       const data = await res.json();
 
+      if (!res.ok || !data.ok) {
+        throw new Error(data.error || "Could not load logs");
+      }
+
       if (data.ok && Array.isArray(data.logs)) {
         const sorted = [...data.logs].sort(
           (a, b) =>
@@ -84,8 +90,8 @@ export default function LogsPage() {
         );
         setLogs(sorted);
       }
-    } catch (err) {
-      console.error("Failed to fetch logs:", err);
+    } catch {
+      setError("Could not connect to the backend service.");
     } finally {
       setLoading(false);
     }
@@ -192,7 +198,30 @@ export default function LogsPage() {
                     <p className="text-zinc-500 text-center">Loading logs…</p>
                   )}
 
-                  {!loading && logs.length === 0 && (
+                  {!loading && error && (
+                    <Empty className="border-none bg-transparent max-w-md mx-auto py-12">
+                      <EmptyHeader>
+                        <EmptyMedia className="bg-zinc-900 text-zinc-400">
+                          <Terminal className="size-5" />
+                        </EmptyMedia>
+                        <EmptyTitle className="text-zinc-200">Unable to load logs</EmptyTitle>
+                        <EmptyDescription className="text-zinc-500">
+                          {error}
+                        </EmptyDescription>
+                      </EmptyHeader>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => fetchLogs(true)}
+                        className="mx-auto mt-4"
+                      >
+                        <RefreshCw className="mr-2 size-4" />
+                        Retry
+                      </Button>
+                    </Empty>
+                  )}
+
+                  {!loading && !error && logs.length === 0 && (
                     <Empty className="border-none bg-transparent max-w-md mx-auto py-12">
                       <EmptyHeader>
                         <EmptyMedia className="bg-zinc-900 text-zinc-400">
@@ -206,7 +235,7 @@ export default function LogsPage() {
                     </Empty>
                   )}
 
-                  {logs.length > 0 && (
+                  {!error && logs.length > 0 && (
                     <div className="w-full h-full align-top space-y-1">
                       {logs.map((log) => (
                         <div key={log._id} className={getLogColor(log)}>
