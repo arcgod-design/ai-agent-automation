@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import {
   ArrowLeft,
   Bot,
@@ -16,28 +16,28 @@ import {
   Send,
   Sparkles,
   User,
-  X
-} from "lucide-react";
+  X,
+} from 'lucide-react';
 
-import { AppSidebar } from "@/components/app-sidebar";
-import { AuthGuard } from "@/components/auth/auth-guard";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
+import { AppSidebar } from '@/components/app-sidebar';
+import { AuthGuard } from '@/components/auth/auth-guard';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
 import {
   Empty,
   EmptyContent,
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
-  EmptyTitle
-} from "@/components/ui/empty";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Textarea } from "@/components/ui/textarea";
-import { useAssistantContext } from "@/context/assistant-context";
-import { apiUrl } from "@/lib/api";
+  EmptyTitle,
+} from '@/components/ui/empty';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Textarea } from '@/components/ui/textarea';
+import { useAssistantContext } from '@/context/assistant-context';
+import { apiUrl } from '@/lib/api';
 
 type DocumentMeta = {
   _id: string;
@@ -62,7 +62,7 @@ type RagSource = {
 };
 
 type ChatMessage = {
-  role: "user" | "assistant";
+  role: 'user' | 'assistant';
   content: string;
   sources?: RagSource[];
 };
@@ -76,18 +76,20 @@ type SourceGroup = {
 };
 
 const suggestedPrompts = [
-  "Summarize the selected documents",
-  "Compare the main differences",
-  "Find contradictions or gaps"
+  'Summarize the selected documents',
+  'Compare the main differences',
+  'Find contradictions or gaps',
 ];
 
 function parseDocumentIds(idsParam: string | null) {
-  return [...new Set(
-    (idsParam || "")
-      .split(",")
-      .map((id) => id.trim())
-      .filter(Boolean)
-  )];
+  return [
+    ...new Set(
+      (idsParam || '')
+        .split(',')
+        .map((id) => id.trim())
+        .filter(Boolean)
+    ),
+  ];
 }
 
 function formatSize(bytes?: number) {
@@ -99,7 +101,7 @@ function formatSize(bytes?: number) {
 }
 
 function formatScore(score?: number) {
-  if (typeof score !== "number") return null;
+  if (typeof score !== 'number') return null;
   return score.toFixed(2);
 }
 
@@ -107,15 +109,15 @@ function groupSourcesByDocument(sources: RagSource[] = []) {
   const groups = new Map<string, SourceGroup & { seenChunks: Set<number> }>();
 
   for (const source of sources) {
-    const groupKey = source.documentId || source.title || "unknown-source";
+    const groupKey = source.documentId || source.title || 'unknown-source';
     const existingGroup = groups.get(groupKey);
     const group = existingGroup || {
       documentId: source.documentId,
-      title: source.title || "Untitled",
+      title: source.title || 'Untitled',
       chunkIndexes: [],
       excerptCount: 0,
       bestScore: undefined,
-      seenChunks: new Set<number>()
+      seenChunks: new Set<number>(),
     };
 
     if (!group.seenChunks.has(source.chunkIndex)) {
@@ -125,8 +127,8 @@ function groupSourcesByDocument(sources: RagSource[] = []) {
     }
 
     if (
-      typeof source.score === "number" &&
-      (typeof group.bestScore !== "number" || source.score > group.bestScore)
+      typeof source.score === 'number' &&
+      (typeof group.bestScore !== 'number' || source.score > group.bestScore)
     ) {
       group.bestScore = source.score;
     }
@@ -138,31 +140,25 @@ function groupSourcesByDocument(sources: RagSource[] = []) {
 }
 
 function formatSourceMeta(document: DocumentMeta) {
-  const status = document.status === "failed"
-    ? "Failed"
-    : document.status === "ready"
-      ? "Ready"
-      : "Processing";
+  const status =
+    document.status === 'failed' ? 'Failed' : document.status === 'ready' ? 'Ready' : 'Processing';
   const type = document.fileType?.toUpperCase();
   const size = formatSize(document.size);
 
-  const details = document.status === "ready"
-    ? [
-        status,
-        typeof document.chunkCount === "number" ? `${document.chunkCount} chunks` : null,
-        size
-      ]
-    : [
-        status,
-        type,
-        size
-      ];
+  const details =
+    document.status === 'ready'
+      ? [
+          status,
+          typeof document.chunkCount === 'number' ? `${document.chunkCount} chunks` : null,
+          size,
+        ]
+      : [status, type, size];
 
-  return details.filter(Boolean).join(" · ");
+  return details.filter(Boolean).join(' · ');
 }
 
 function getDocumentProgress(document: DocumentMeta) {
-  if (document.status === "ready") return 100;
+  if (document.status === 'ready') return 100;
 
   const processedChunks = document.processedChunks || 0;
   const totalChunks = document.totalChunks || 0;
@@ -171,111 +167,113 @@ function getDocumentProgress(document: DocumentMeta) {
     return Math.round((processedChunks / totalChunks) * 100);
   }
 
-  return document.status === "processing" ? 10 : 0;
+  return document.status === 'processing' ? 10 : 0;
 }
 
 function getProcessingLabel(document: DocumentMeta) {
-  if (document.status === "failed") return "Failed";
+  if (document.status === 'failed') return 'Failed';
 
-  const step = document.processingStep || "Processing";
+  const step = document.processingStep || 'Processing';
   const processedChunks = document.processedChunks || 0;
   const totalChunks = document.totalChunks || 0;
 
-  if (document.status === "processing" && totalChunks > 0) {
+  if (document.status === 'processing' && totalChunks > 0) {
     return `${step} · ${processedChunks}/${totalChunks}`;
   }
 
-  return document.status === "processing" ? "Processing..." : step;
+  return document.status === 'processing' ? 'Processing...' : step;
 }
 
 function MultiDocumentChatContent() {
   const searchParams = useSearchParams();
   const selectedDocumentIds = useMemo(
-    () => parseDocumentIds(searchParams.get("ids")),
+    () => parseDocumentIds(searchParams.get('ids')),
     [searchParams]
   );
-  const selectedDocumentIdKey = selectedDocumentIds.join(",");
+  const selectedDocumentIdKey = selectedDocumentIds.join(',');
 
   const [documents, setDocuments] = useState<DocumentMeta[]>([]);
   const [missingDocumentIds, setMissingDocumentIds] = useState<string[]>([]);
   const [metadataLoading, setMetadataLoading] = useState(false);
-  const [metadataError, setMetadataError] = useState("");
+  const [metadataError, setMetadataError] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
-  const [chatError, setChatError] = useState("");
+  const [chatError, setChatError] = useState('');
 
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
   const { setContext, clearContext } = useAssistantContext();
   const nonReadyDocuments = useMemo(
-    () => documents.filter((document) => document.status && document.status !== "ready"),
+    () => documents.filter((document) => document.status && document.status !== 'ready'),
     [documents]
   );
 
   useEffect(() => {
     setContext({
-      page: "documents",
-      mode: "multi-document-chat",
-      documentIds: selectedDocumentIds
+      page: "documents"
     });
 
     return () => clearContext();
-  }, [clearContext, selectedDocumentIdKey, selectedDocumentIds, setContext]);
+  }, [clearContext, setContext]);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, chatLoading]);
 
-  const loadDocuments = useCallback(async (showLoader = true) => {
-    if (!selectedDocumentIds.length) {
-      setDocuments([]);
-      setMissingDocumentIds([]);
-      return;
-    }
-
-    try {
-      if (showLoader) {
-        setMetadataLoading(true);
+  const loadDocuments = useCallback(
+    async (showLoader = true) => {
+      if (!selectedDocumentIds.length) {
+        setDocuments([]);
+        setMissingDocumentIds([]);
+        return;
       }
-      setMetadataError("");
 
-      const res = await fetch(apiUrl("/documents"), {
-        headers: {
-          Authorization: "Bearer " + localStorage.getItem("token")
+      try {
+        if (showLoader) {
+          setMetadataLoading(true);
         }
-      });
+        setMetadataError('');
 
-      const data = await res.json();
+        const res = await fetch(apiUrl('/documents'), {
+          headers: {
+            Authorization: 'Bearer ' + localStorage.getItem('token'),
+          },
+        });
 
-      if (!data.ok) {
-        throw new Error(data.error || "Failed to load documents");
+        const data = await res.json();
+
+        if (!data.ok) {
+          throw new Error(data.error || 'Failed to load documents');
+        }
+
+        const allDocuments = (data.documents || []) as DocumentMeta[];
+        const byId = new Map(allDocuments.map((document) => [document._id, document]));
+        const selectedDocuments = selectedDocumentIds
+          .map((id) => byId.get(id))
+          .filter(Boolean) as DocumentMeta[];
+
+        setDocuments(selectedDocuments);
+        setMissingDocumentIds(selectedDocumentIds.filter((id) => !byId.has(id)));
+      } catch {
+        setMetadataError(
+          'Could not load selected document details. Make sure the backend server is running.'
+        );
+      } finally {
+        if (showLoader) {
+          setMetadataLoading(false);
+        }
       }
-
-      const allDocuments = (data.documents || []) as DocumentMeta[];
-      const byId = new Map(allDocuments.map((document) => [document._id, document]));
-      const selectedDocuments = selectedDocumentIds
-        .map((id) => byId.get(id))
-        .filter(Boolean) as DocumentMeta[];
-
-      setDocuments(selectedDocuments);
-      setMissingDocumentIds(
-        selectedDocumentIds.filter((id) => !byId.has(id))
-      );
-    } catch {
-      setMetadataError("Could not load selected document details. Make sure the backend server is running.");
-    } finally {
-      if (showLoader) {
-        setMetadataLoading(false);
-      }
-    }
-  }, [selectedDocumentIds]);
+    },
+    [selectedDocumentIds]
+  );
 
   useEffect(() => {
     loadDocuments();
   }, [loadDocuments]);
 
   useEffect(() => {
-    const hasProcessingDocuments = documents.some((document) => document.status === "processing");
+    const hasProcessingDocuments = documents.some((document) => document.status === 'processing');
 
     if (!hasProcessingDocuments) return;
 
@@ -293,47 +291,44 @@ function MultiDocumentChatContent() {
     setMessages((prev) => [
       ...prev,
       {
-        role: "user",
-        content: question
-      }
+        role: 'user',
+        content: question,
+      },
     ]);
-    setInput("");
-    setChatError("");
+    setInput('');
+    setChatError('');
     setChatLoading(true);
 
     try {
-      const res = await fetch(apiUrl("/documents/chat"), {
-        method: "POST",
+      const res = await fetch(apiUrl('/documents/chat'), {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
-          Authorization: "Bearer " + localStorage.getItem("token")
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + localStorage.getItem('token'),
         },
         body: JSON.stringify({
           documentIds: selectedDocumentIds,
-          question
-        })
+          question,
+        }),
       });
 
       const data = await res.json();
 
       if (!res.ok || !data.ok) {
-        throw new Error(data.error || "The document chat request failed.");
+        throw new Error(data.error || 'The document chat request failed.');
       }
 
       setMessages((prev) => [
         ...prev,
         {
-          role: "assistant",
-          content: data.answer || "I could not find relevant information in the selected document(s).",
-          sources: Array.isArray(data.sources) ? data.sources : []
-        }
+          role: 'assistant',
+          content:
+            data.answer || 'I could not find relevant information in the selected document(s).',
+          sources: Array.isArray(data.sources) ? data.sources : [],
+        },
       ]);
     } catch (err) {
-      setChatError(
-        err instanceof Error
-          ? err.message
-          : "The document chat request failed."
-      );
+      setChatError(err instanceof Error ? err.message : 'The document chat request failed.');
     } finally {
       setChatLoading(false);
     }
@@ -351,7 +346,7 @@ function MultiDocumentChatContent() {
 
           <main
             className="flex-1 transition-[padding] duration-300"
-            style={{ paddingLeft: "var(--sidebar-width, 256px)" }}
+            style={{ paddingLeft: 'var(--sidebar-width, 256px)' }}
           >
             <div className="flex min-h-screen items-center justify-center p-6">
               <Empty>
@@ -382,14 +377,14 @@ function MultiDocumentChatContent() {
 
   return (
     <AuthGuard>
-      <div className="flex min-h-screen bg-background">
+      <div className="flex h-screen bg-background overflow-hidden">
         <AppSidebar />
 
         <main
-          className="flex-1 transition-[padding] duration-300"
-          style={{ paddingLeft: "var(--sidebar-width, 256px)" }}
+          className="flex-1 flex flex-col h-screen overflow-hidden transition-[padding] duration-300"
+          style={{ paddingLeft: 'var(--sidebar-width, 256px)' }}
         >
-          <div className="flex h-screen flex-col gap-5 p-6">
+          <div className="flex flex-col h-full gap-5 p-6 overflow-hidden">
             <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div className="space-y-2">
                 <Button asChild variant="ghost" size="sm" className="-ml-3 w-fit gap-2">
@@ -400,9 +395,7 @@ function MultiDocumentChatContent() {
                 </Button>
 
                 <div>
-                  <h1 className="text-2xl font-semibold tracking-tight">
-                    Multi-document Chat
-                  </h1>
+                  <h1 className="text-2xl font-semibold tracking-tight">Multi-document Chat</h1>
                   <p className="text-sm text-muted-foreground">
                     Ask questions across selected documents
                   </p>
@@ -420,7 +413,7 @@ function MultiDocumentChatContent() {
                     size="sm"
                     onClick={() => {
                       setMessages([]);
-                      setChatError("");
+                      setChatError('');
                     }}
                     className="gap-2"
                   >
@@ -431,7 +424,7 @@ function MultiDocumentChatContent() {
               </div>
             </header>
 
-            <div className="grid min-h-0 flex-1 gap-5 lg:grid-cols-[320px_minmax(0,1fr)]">
+            <div className="grid min-h-0 flex-1 gap-5 lg:grid-cols-[320px_minmax(0,1fr)] overflow-hidden">
               <aside className="min-h-0">
                 <Card className="flex h-full flex-col overflow-hidden border-border/70 bg-muted/10 shadow-sm">
                   <div className="border-b border-border/70 px-5 py-5">
@@ -460,20 +453,23 @@ function MultiDocumentChatContent() {
 
                       {missingDocumentIds.length > 0 && (
                         <div className="rounded-lg border border-yellow-500/25 bg-yellow-500/10 px-3 py-2.5 text-sm text-yellow-200">
-                          {missingDocumentIds.length} selected document(s) could not be loaded or are not accessible.
+                          {missingDocumentIds.length} selected document(s) could not be loaded or
+                          are not accessible.
                         </div>
                       )}
 
                       {nonReadyDocuments.length > 0 && (
                         <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">
-                          <span className="text-primary">⚡</span>{" "}
-                          Preparing {nonReadyDocuments.length} source{nonReadyDocuments.length === 1 ? "" : "s"}. Answers may improve once processing finishes.
+                          <span className="text-primary">⚡</span> Preparing{' '}
+                          {nonReadyDocuments.length} source
+                          {nonReadyDocuments.length === 1 ? '' : 's'}. Answers may improve once
+                          processing finishes.
                         </div>
                       )}
 
                       {documents.map((document) => {
-                        const isProcessing = document.status === "processing";
-                        const isFailed = document.status === "failed";
+                        const isProcessing = document.status === 'processing';
+                        const isFailed = document.status === 'failed';
                         const progress = getDocumentProgress(document);
 
                         return (
@@ -489,7 +485,7 @@ function MultiDocumentChatContent() {
                               <div className="min-w-0 flex-1 space-y-2">
                                 <div className="flex items-start justify-between gap-2">
                                   <p className="min-w-0 truncate text-[15px] font-medium leading-snug">
-                                    {document.title || "Untitled"}
+                                    {document.title || 'Untitled'}
                                   </p>
                                   <ExternalLink className="mt-1 size-3 shrink-0 text-muted-foreground/70" />
                                 </div>
@@ -499,7 +495,11 @@ function MultiDocumentChatContent() {
                                 {(isProcessing || isFailed) && (
                                   <div className="space-y-1.5">
                                     <div className="flex items-center justify-between gap-2 text-xs">
-                                      <span className={isFailed ? "text-destructive" : "text-muted-foreground"}>
+                                      <span
+                                        className={
+                                          isFailed ? 'text-destructive' : 'text-muted-foreground'
+                                        }
+                                      >
                                         {getProcessingLabel(document)}
                                       </span>
                                       {!isFailed && (
@@ -510,7 +510,7 @@ function MultiDocumentChatContent() {
                                     </div>
                                     <Progress
                                       value={progress}
-                                      className={`h-1 ${isFailed ? "[&>div]:bg-destructive" : ""}`}
+                                      className={`h-1 ${isFailed ? '[&>div]:bg-destructive' : ''}`}
                                     />
                                     {isFailed && document.processingError && (
                                       <p className="line-clamp-2 text-xs text-muted-foreground">
@@ -530,7 +530,7 @@ function MultiDocumentChatContent() {
               </aside>
 
               <Card className="flex min-h-0 flex-col overflow-hidden border-border bg-muted/20">
-                <div className="border-b border-border bg-background/70 px-5 py-4">
+                <div className="border-b border-border bg-background/70 px-5 py-4 shrink-0">
                   <div className="flex items-center gap-3">
                     <div className="rounded-md bg-primary/10 p-2 text-primary">
                       <MessageSquare className="size-5" />
@@ -544,7 +544,10 @@ function MultiDocumentChatContent() {
                   </div>
                 </div>
 
-                <ScrollArea className="flex-1 px-5 py-5">
+                <div
+                  ref={chatScrollRef}
+                  className="flex-1 min-h-0 overflow-y-auto px-5 py-5 scroll-smooth"
+                >
                   {messages.length === 0 && !chatLoading && (
                     <div className="flex min-h-[420px] flex-col items-center justify-center text-center">
                       <div className="mb-4 rounded-full border border-primary/20 bg-primary/10 p-3 text-primary">
@@ -552,7 +555,8 @@ function MultiDocumentChatContent() {
                       </div>
                       <h3 className="text-lg font-semibold">Start with your sources</h3>
                       <p className="mt-2 max-w-md text-sm text-muted-foreground">
-                        Ask for a summary, compare themes, or look for gaps across the selected documents.
+                        Ask for a summary, compare themes, or look for gaps across the selected
+                        documents.
                       </p>
 
                       <div className="mt-6 grid w-full max-w-3xl gap-3 md:grid-cols-3">
@@ -572,13 +576,13 @@ function MultiDocumentChatContent() {
 
                   <div className="space-y-7">
                     {messages.map((message, index) => {
-                      const isUser = message.role === "user";
+                      const isUser = message.role === 'user';
                       const groupedSources = groupSourcesByDocument(message.sources || []);
 
                       return (
                         <div
                           key={`${message.role}-${index}`}
-                          className={`flex gap-4 ${isUser ? "justify-end" : "justify-start"}`}
+                          className={`flex gap-4 ${isUser ? 'justify-end' : 'justify-start'}`}
                         >
                           {!isUser && (
                             <Avatar className="mt-1">
@@ -588,12 +592,14 @@ function MultiDocumentChatContent() {
                             </Avatar>
                           )}
 
-                          <div className={`flex max-w-3xl flex-col ${isUser ? "items-end" : "items-start"}`}>
+                          <div
+                            className={`flex max-w-3xl flex-col ${isUser ? 'items-end' : 'items-start'}`}
+                          >
                             <div
                               className={`rounded-xl border px-5 py-4 text-sm leading-relaxed ${
                                 isUser
-                                  ? "border-primary/20 bg-primary/10"
-                                  : "border-border bg-background"
+                                  ? 'border-primary/20 bg-primary/10'
+                                  : 'border-border bg-background'
                               }`}
                             >
                               <div className="prose prose-invert max-w-none text-sm">
@@ -618,17 +624,22 @@ function MultiDocumentChatContent() {
                                           className="rounded-md border border-border bg-muted/30 px-3 py-2.5 text-xs transition-colors hover:border-primary/50 hover:bg-primary/10"
                                         >
                                           <span className="block truncate font-medium">
-                                            {sourceGroup.title || "Untitled"}
+                                            {sourceGroup.title || 'Untitled'}
                                           </span>
                                           <span className="mt-1 block text-muted-foreground">
-                                            {sourceGroup.excerptCount} {sourceGroup.excerptCount === 1 ? "excerpt" : "excerpts"}
+                                            {sourceGroup.excerptCount}{' '}
+                                            {sourceGroup.excerptCount === 1
+                                              ? 'excerpt'
+                                              : 'excerpts'}
                                             {formatScore(sourceGroup.bestScore)
                                               ? ` · Best score ${formatScore(sourceGroup.bestScore)}`
-                                              : ""}
+                                              : ''}
                                           </span>
                                           <span className="mt-1 block text-muted-foreground">
-                                            {sourceGroup.chunkIndexes.length === 1 ? "Chunk" : "Chunks"}{" "}
-                                            {sourceGroup.chunkIndexes.join(", ")}
+                                            {sourceGroup.chunkIndexes.length === 1
+                                              ? 'Chunk'
+                                              : 'Chunks'}{' '}
+                                            {sourceGroup.chunkIndexes.join(', ')}
                                           </span>
                                         </Link>
                                       ))}
@@ -676,17 +687,17 @@ function MultiDocumentChatContent() {
                       </div>
                     )}
 
-                    <div ref={bottomRef} />
+                    <div ref={messagesEndRef} aria-hidden="true" className="h-px" />
                   </div>
-                </ScrollArea>
+                </div>
 
                 {chatError && (
-                  <div className="border-t border-destructive/30 bg-destructive/10 px-5 py-3 text-sm text-destructive">
+                  <div className="border-t border-destructive/30 bg-destructive/10 px-5 py-3 text-sm text-destructive shrink-0">
                     {chatError}
                   </div>
                 )}
 
-                <div className="border-t border-border bg-background p-4">
+                <div className="shrink-0 border-t border-border/60 bg-background/80 backdrop-blur-md p-4 shadow-[0_-2px_12px_rgba(0,0,0,0.06)]">
                   <label htmlFor="multi-document-question" className="sr-only">
                     Ask a question across selected documents
                   </label>
@@ -699,7 +710,7 @@ function MultiDocumentChatContent() {
                       className="max-h-40 min-h-20 resize-none"
                       onChange={(e) => setInput(e.target.value)}
                       onKeyDown={(e) => {
-                        if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+                        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
                           e.preventDefault();
                           submitQuestion();
                         }

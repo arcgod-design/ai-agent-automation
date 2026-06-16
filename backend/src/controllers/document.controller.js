@@ -1,13 +1,13 @@
-const pdf = require("pdf-parse");
-const multer = require("multer");
-const mongoose = require("mongoose");
+const pdf = require('pdf-parse');
+const multer = require('multer');
+const mongoose = require('mongoose');
 
 const Document = require('../models/document.model');
 const DocumentChunk = require('../models/documentChunk.model');
 const SystemSettings = require('../models/systemSettings.model');
 
-const { processDocument, queryDocuments } = require("../services/documentService");
-const { runLLM } = require("../agents/llmAdapter");
+const { processDocument, queryDocuments } = require('../services/documentService');
+const { runLLM } = require('../agents/llmAdapter');
 
 const upload = multer({ storage: multer.memoryStorage() });
 const MAX_SELECTED_DOCUMENTS = 10;
@@ -15,13 +15,11 @@ const MAX_RAG_CONTEXT_CHARS = 12000;
 const DOCUMENT_PROCESSING_TIMEOUT_MS = 2 * 60 * 1000;
 
 function safeProcessingError(error) {
-  if (!error) return "Document processing failed";
+  if (!error) return 'Document processing failed';
 
-  const message = error instanceof Error
-    ? error.message
-    : String(error);
+  const message = error instanceof Error ? error.message : String(error);
 
-  return message.slice(0, 500) || "Document processing failed";
+  return message.slice(0, 500) || 'Document processing failed';
 }
 
 function withTimeout(promise, timeoutMs) {
@@ -29,7 +27,7 @@ function withTimeout(promise, timeoutMs) {
 
   const timeoutPromise = new Promise((_, reject) => {
     timeoutId = setTimeout(() => {
-      reject(new Error("Document processing timed out"));
+      reject(new Error('Document processing timed out'));
     }, timeoutMs);
   });
 
@@ -93,12 +91,12 @@ async function uploadDocument(req, res) {
       title: file.originalname,
       fileType: extension,
       size: file.size,
-      status: "processing",
+      status: 'processing',
       processingStartedAt: new Date(),
-      processingStep: "Queued",
+      processingStep: 'Queued',
       processedChunks: 0,
       totalChunks: 0,
-      processingError: undefined
+      processingError: undefined,
     });
 
     /* ---------- Process document (chunk + embed) ---------- */
@@ -118,19 +116,16 @@ async function uploadDocument(req, res) {
 
     try {
       await Document.findByIdAndUpdate(document._id, {
-        processingStep: "Extracting text"
+        processingStep: 'Extracting text',
       });
 
-      await withTimeout(
-        processDocument(agent, document, text),
-        DOCUMENT_PROCESSING_TIMEOUT_MS
-      );
+      await withTimeout(processDocument(agent, document, text), DOCUMENT_PROCESSING_TIMEOUT_MS);
     } catch (processingError) {
       await Document.findByIdAndUpdate(document._id, {
-        status: "failed",
-        processingStep: "Failed",
+        status: 'failed',
+        processingStep: 'Failed',
         processingError: safeProcessingError(processingError),
-        processedAt: new Date()
+        processedAt: new Date(),
       });
 
       throw processingError;
@@ -171,37 +166,32 @@ async function listDocuments(req, res) {
 
 async function chatWithDocument(req, res) {
   try {
-
     const { documentId, documentIds, question } = req.body;
 
-    if (typeof question !== "string" || !question.trim()) {
+    if (typeof question !== 'string' || !question.trim()) {
       return res.status(400).json({
         ok: false,
-        error: "question_required",
+        error: 'question_required',
       });
     }
 
-    const requestedDocumentIds = Array.isArray(documentIds)
-      ? documentIds
-      : [documentId];
+    const requestedDocumentIds = Array.isArray(documentIds) ? documentIds : [documentId];
 
-    const selectedDocumentIds = [...new Set(
-      requestedDocumentIds
-        .filter(Boolean)
-        .map((id) => id.toString())
-    )];
+    const selectedDocumentIds = [
+      ...new Set(requestedDocumentIds.filter(Boolean).map((id) => id.toString())),
+    ];
 
     if (!selectedDocumentIds.length) {
       return res.status(400).json({
         ok: false,
-        error: "document_required",
+        error: 'document_required',
       });
     }
 
     if (selectedDocumentIds.length > MAX_SELECTED_DOCUMENTS) {
       return res.status(400).json({
         ok: false,
-        error: "too_many_documents",
+        error: 'too_many_documents',
       });
     }
 
@@ -212,37 +202,37 @@ async function chatWithDocument(req, res) {
     if (hasInvalidDocumentId) {
       return res.status(400).json({
         ok: false,
-        error: "invalid_document_id",
+        error: 'invalid_document_id',
       });
     }
 
     const documents = await Document.find({
       _id: { $in: selectedDocumentIds },
-      userId: req.user._id
+      userId: req.user._id,
     }).lean();
 
     if (documents.length !== selectedDocumentIds.length) {
       return res.status(404).json({
         ok: false,
-        error: "Document not found"
+        error: 'Document not found',
       });
     }
 
-    const hasFailedDocument = documents.some((document) => document.status === "failed");
+    const hasFailedDocument = documents.some((document) => document.status === 'failed');
 
     if (hasFailedDocument) {
       return res.status(400).json({
         ok: false,
-        error: "document_processing_failed"
+        error: 'document_processing_failed',
       });
     }
 
-    const hasNonReadyDocument = documents.some((document) => document.status !== "ready");
+    const hasNonReadyDocument = documents.some((document) => document.status !== 'ready');
 
     if (hasNonReadyDocument) {
       return res.status(400).json({
         ok: false,
-        error: "document_not_ready"
+        error: 'document_not_ready',
       });
     }
 
@@ -250,7 +240,7 @@ async function chatWithDocument(req, res) {
     const documentTitleById = new Map(
       documents.map((document) => [
         document._id.toString(),
-        document.title || document.name || "Untitled document"
+        document.title || document.name || 'Untitled document',
       ])
     );
 
@@ -282,9 +272,9 @@ async function chatWithDocument(req, res) {
     if (!chunks.length) {
       return res.json({
         ok: true,
-        answer: "I could not find relevant information in the selected document(s).",
+        answer: 'I could not find relevant information in the selected document(s).',
         sources: [],
-        documentIds: selectedDocumentIds
+        documentIds: selectedDocumentIds,
       });
     }
 
@@ -294,10 +284,10 @@ async function chatWithDocument(req, res) {
       return {
         _id: chunk._id,
         documentId: chunkDocumentId,
-        title: documentTitleById.get(chunkDocumentId) || "Untitled document",
+        title: documentTitleById.get(chunkDocumentId) || 'Untitled document',
         chunkIndex: chunk.chunkIndex,
         score: chunk.score,
-        content: chunk.content
+        content: chunk.content,
       };
     });
 
@@ -306,11 +296,11 @@ async function chatWithDocument(req, res) {
     let contextLength = 0;
 
     for (const chunk of enrichedChunks) {
-      const separator = contextBlocks.length ? "\n\n---\n\n" : "";
+      const separator = contextBlocks.length ? '\n\n---\n\n' : '';
       const header = `[${chunk.title}]
 Chunk ${chunk.chunkIndex}
 `;
-      let content = chunk.content || "";
+      let content = chunk.content || '';
       let block = `${header}${content}`;
       let nextLength = contextLength + separator.length + block.length;
 
@@ -333,12 +323,12 @@ Chunk ${chunk.chunkIndex}
       contextBlocks.push(`${separator}${block}`);
       includedChunks.push({
         ...chunk,
-        content
+        content,
       });
       contextLength = nextLength;
     }
 
-    const context = contextBlocks.join("");
+    const context = contextBlocks.join('');
 
     const seenSources = new Set();
     const sources = includedChunks
@@ -358,9 +348,7 @@ Chunk ${chunk.chunkIndex}
         documentId: chunk.documentId,
         title: chunk.title,
         chunkIndex: chunk.chunkIndex,
-        score: typeof chunk.score === "number"
-          ? Number(chunk.score.toFixed(4))
-          : chunk.score
+        score: typeof chunk.score === 'number' ? Number(chunk.score.toFixed(4)) : chunk.score,
       }));
 
     const prompt = `
@@ -448,7 +436,7 @@ ${trimmedQuestion}
       ok: true,
       answer: llm.text,
       sources,
-      documentIds: selectedDocumentIds
+      documentIds: selectedDocumentIds,
     });
   } catch (err) {
     console.error('Document query error:', err);
@@ -528,5 +516,5 @@ module.exports = {
   listDocuments,
   getDocument,
   chatWithDocument,
-  deleteDocument
+  deleteDocument,
 };
