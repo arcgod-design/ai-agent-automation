@@ -555,6 +555,15 @@ export default function WorkflowBuilderPage() {
             type: 'join'
           };
         }
+        if (s.type === 'Approval') {
+          return {
+            stepId: s.id,
+            name: s.name,
+            position: s.position,
+            type: 'approval',
+            approvalMessage: s.approvalMessage ?? ''
+          };
+        }
 
         // fallback (should never hit)
         return {
