@@ -69,6 +69,31 @@ Header max 100 chars, subject lowercase, no trailing period.
 - Frontend API URL in Docker is derived from `BACKEND_PORT` — do NOT set `NEXT_PUBLIC_API_URL` manually for Docker deploys
 - Env vars are never committed; `backend/.env.example` is the source of truth for local dev, `infra/.env.example` for Docker
 
+## Architecture & Topic Guide
+
+Deep docs live in `docs/`. By topic:
+
+- **Workflow engine architecture** — [docs/architecture.md](docs/architecture.md), [docs/workflow-engine.md](docs/workflow-engine.md)
+- **Runner & executor flow** — [docs/workflow-engine.md](docs/workflow-engine.md) (execution lifecycle + step flow); worker entry `backend/src/agents/runner.js`
+- **Workflow graph / edge routing** — [docs/workflow-builder.md](docs/workflow-builder.md), [docs/architecture.md](docs/architecture.md) (branch routing)
+- **Agent memory system** — [docs/semantic-memory.md](docs/semantic-memory.md), [docs/agent-system.md](docs/agent-system.md)
+- **Document RAG** — [docs/document-intelligence-rag.md](docs/document-intelligence-rag.md)
+- **Workflow builder conventions** — [docs/workflow-builder.md](docs/workflow-builder.md)
+- **Tools & MCP** — [docs/automation-tools.md](docs/automation-tools.md), [docs/how-to-add-custom-tool.md](docs/how-to-add-custom-tool.md), [docs/mcp-integration.md](docs/mcp-integration.md)
+- **Contribution workflow & commit style** — [CONTRIBUTING.md](CONTRIBUTING.md)
+- **Ops** — [docs/docker-deployment.md](docs/docker-deployment.md), [docs/telemetry.md](docs/telemetry.md), [docs/privacy.md](docs/privacy.md), [docs/POSTMAN.md](docs/POSTMAN.md)
+
+## Coding Conventions
+
+Repository-specific patterns to follow (lint/prettier rules are under [Code Style](#code-style); contribution process is in [CONTRIBUTING.md](CONTRIBUTING.md)):
+
+- **Backend layering**: `controllers/` → `routes/` → `services/` → `models/`; step execution under `agents/` (`handlers/`, `executor.js`, `runner.js`); tools in `tools/`; node catalog in `workflow/`
+- **Controllers** return via `sendOK(res, payload)` / `sendError(res, code, key)`; wrap async in try/catch logging `"<fn> error"`; enforce ownership with `resource.userId.toString() !== req.user._id.toString()` → 403. Error keys are lowercase snake_case (`name_required`, `not_found`, `forbidden`)
+- **Routes**: `router.use(authMiddleware)` then declare specific paths before `/:id` params
+- **Step handlers** export `execute(step, context, agent, validatedStepId, timeoutMs)` and are registered in the `backend/src/agents/executor.js` handler map (key = lowercased step type). New tools alternatively follow the `meta` + `run(step, context)` registry contract — see [docs/how-to-add-custom-tool.md](docs/how-to-add-custom-tool.md)
+- **Frontend**: `'use client'` components, App Router under `app/`, shared fetch client `frontend/src/lib/api.ts` (`api` / `apiGet` / `apiPost` / `apiPut` / `apiDelete`, Bearer token, 401 → `/login`), types in `frontend/src/types/`
+- **Tests**: only `**/*.handler.test.js` run (`cd backend && npm test`); Jest with external deps mocked. No frontend test suite
+
 ## Common Pitfalls
 
 - Forgetting to run the worker — workflows won't execute without it
