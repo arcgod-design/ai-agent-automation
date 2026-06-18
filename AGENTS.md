@@ -11,6 +11,7 @@ Monorepo with three packages that are NOT linked via workspaces — each has its
 ## Dev Commands
 
 **Backend** (two processes required):
+
 ```bash
 cd backend
 cp .env.example .env   # fill in JWT_SECRET, MONGO_URI, LLM keys
@@ -20,6 +21,7 @@ npm run worker          # agent runner (separate terminal)
 ```
 
 **Frontend**:
+
 ```bash
 cd frontend
 npm install
@@ -27,21 +29,25 @@ npm run dev             # Next.js on :3000
 ```
 
 **Lint & format** (run from repo root):
+
 ```bash
 npm run lint            # eslint frontend/src + backend/src
 npm run format          # prettier --write frontend/src backend/src
 ```
 
 **Backend tests**:
+
 ```bash
 cd backend
 npm test                # runs jest --testMatch '**/*.handler.test.js'
 ```
+
 Only handler test files are included. There is no frontend test suite.
 
 ## Git Hooks
 
 Husky runs on commit:
+
 - **pre-commit**: `lint-staged` → eslint --fix + prettier --write on staged files
 - **commit-msg**: commitlint enforces [Conventional Commits](https://www.conventionalcommits.org/)
 
@@ -72,20 +78,19 @@ Header max 100 chars, subject lowercase, no trailing period.
 
 ## Installed Skills
 
-| Skill | Use Case |
-|-------|----------|
-| next-best-practices | Build Next.js pages, fetch data, make fast |
-| next-cache-components | Cache data so pages load quicker |
-| vercel-react-best-practices | React: manage state, keep components fast |
-| vercel-composition-patterns | Build components for phone and desktop |
-| typescript-advanced-types | Catch mistakes early with TypeScript |
-| tailwind-design-system | Style pages, create themes, mobile design |
-| wcag-audit-patterns | Make sites work for everyone, all abilities |
-| accessibility-compliance | Accessible colors, focus states, screen readers |
-| core-web-vitals | Make pages load fast, feel responsive |
-| api-design-principles | Build APIs: name endpoints, handle errors |
-| nodejs-backend-patterns | Handle requests, async code patterns |
-| nodejs-express-server | Build web server with Express |
-| github-actions-docs | Automate tests and deployments |
-| deploy-to-vercel | Deploy Next.js app, preview changes |
-| eslint-prettier-config | Keep code clean: format, lint, check commits |
+| Skill                       | Use Case                                        |
+| --------------------------- | ----------------------------------------------- |
+| next-best-practices         | Build Next.js pages, fetch data, make fast      |
+| next-cache-components       | Cache data so pages load quicker                |
+| vercel-react-best-practices | React: manage state, keep components fast       |
+| vercel-composition-patterns | Build components for phone and desktop          |
+| typescript-advanced-types   | Catch mistakes early with TypeScript            |
+| tailwind-design-system      | Style pages, create themes, mobile design       |
+| wcag-audit-patterns         | Make sites work for everyone, all abilities     |
+| accessibility-compliance    | Accessible colors, focus states, screen readers |
+| core-web-vitals             | Make pages load fast, feel responsive           |
+| nodejs-backend-patterns     | Handle requests, async code patterns            |
+| nodejs-express-server       | Build web server with Express                   |
+| github-actions-docs         | Automate tests and deployments                  |
+| deploy-to-vercel            | Deploy Next.js app, preview changes             |
+| eslint-prettier-config      | Keep code clean: format, lint, check commits    |
