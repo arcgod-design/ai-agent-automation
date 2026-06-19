@@ -41,6 +41,7 @@ describe('Partial Execution Replay', () => {
       name: 'Original Run',
       userId: mockWorkflow.userId,
       workflowId: mockWorkflow._id,
+      status: 'completed',
       input: { originalInput: 'hello' },
       graphHash: hash,
       stepResults: [
@@ -148,6 +149,32 @@ describe('Partial Execution Replay', () => {
   it('should fail if replay is attempted against an invalid baseline task with no execution history', async () => {
     mockParentTask.status = 'pending';
     mockParentTask.stepResults = []; // empty history
+
+    await runWorkflowPartial(req, res);
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.ok).toBe(false);
+    expect(res.body.error).toBe('invalid_baseline_task');
+  });
+
+  it('should fail if replay is attempted against a pending task even if it has step results', async () => {
+    mockParentTask.status = 'pending';
+    mockParentTask.stepResults = [
+      { stepId: 'step_A', type: 'http', success: true, output: 'result A' },
+    ];
+
+    await runWorkflowPartial(req, res);
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.ok).toBe(false);
+    expect(res.body.error).toBe('invalid_baseline_task');
+  });
+
+  it('should fail if replay is attempted against a running task even if it has step results', async () => {
+    mockParentTask.status = 'running';
+    mockParentTask.stepResults = [
+      { stepId: 'step_A', type: 'http', success: true, output: 'result A' },
+    ];
 
     await runWorkflowPartial(req, res);
 

@@ -474,24 +474,19 @@ async function runWorkflowPartial(req, res) {
     }
 
     if (!parentTask.workflowId || parentTask.workflowId.toString() !== workflowId.toString()) {
-      return res
-        .status(400)
-        .json({
-          ok: false,
-          error: 'workflow_mismatch',
-          message: 'Parent task belongs to a different workflow',
-        });
+      return res.status(400).json({
+        ok: false,
+        error: 'workflow_mismatch',
+        message: 'Parent task belongs to a different workflow',
+      });
     }
 
     const validStatuses = ['completed', 'failed', 'pending_approval', 'rejected'];
-    const hasValidHistory =
-      Array.isArray(parentTask.stepResults) && parentTask.stepResults.length > 0;
-    if (!validStatuses.includes(parentTask.status) && !hasValidHistory) {
+    if (!validStatuses.includes(parentTask.status)) {
       return res.status(400).json({
         ok: false,
         error: 'invalid_baseline_task',
-        message:
-          'Replay baseline task must be completed, failed, pending approval, or have a valid execution trace history.',
+        message: 'Replay baseline task must be completed, failed, pending approval, or rejected.',
       });
     }
 
