@@ -53,7 +53,6 @@ async function writeLog(
       workerId: meta.workerId || "agent-1",
       taskId: meta.taskId,
       workflowId: meta.workflowId,
-      // Trace ID deliberately not persisted to DB per maintainer request, kept as console telemetry
     });
   } catch (err) {
     console.error("Failed to write log:", err.message);
