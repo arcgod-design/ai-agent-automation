@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const { writeLog } = require('./logger');
 const mongoose = require('mongoose');
 const Task = require('../models/task.model');
@@ -75,7 +76,7 @@ async function runWorkerLoop() {
         await sleep(pollIntervalMs);
         continue;
       }
-
+      
       // -------------------------
       // Mark task running
       // -------------------------
@@ -84,11 +85,13 @@ async function runWorkerLoop() {
         startedAt: new Date(),
       });
 
-      console.log(`📝 Task claimed: ${task._id}`);
-      writeLog('Task claimed', 'info', {
+      const traceId = crypto.randomUUID();
+
+      writeLog(`Task claimed: ${task._id}`, 'info', {
         workerId: WORKER_ID,
         taskId: task._id,
         workflowId: task.workflowId,
+        traceId
       });
 
       const workflow = task.workflowId ? await Workflow.findById(task.workflowId).lean() : null;
@@ -114,6 +117,7 @@ async function runWorkerLoop() {
         workflow,
         taskId: task._id,
         userId: task.userId,
+        traceId,
         results: [],
         steps: {},
       };
@@ -152,11 +156,11 @@ async function runWorkerLoop() {
       let success = true;
 
       if (steps.length > 0) {
-        console.log(`⚙️ Executing ${steps.length} steps…`);
-        writeLog(`Executing ${steps.length} steps`, 'info', {
+        writeLog(`Executing ${steps.length} steps…`, 'info', {
           workerId: WORKER_ID,
           taskId: task._id,
           workflowId: task.workflowId,
+          traceId
         });
 
         function getStepId(step) {

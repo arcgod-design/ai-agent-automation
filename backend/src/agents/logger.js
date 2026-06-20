@@ -37,6 +37,15 @@ async function writeLog(
   level = "info",
   meta = {}
 ) {
+  const tracePrefix = meta.traceId ? `[Trace: ${meta.traceId}] ` : '';
+  const consoleMsg = `${tracePrefix}${message}`;
+
+  switch (level) {
+    case 'error': console.error(`❌ ${consoleMsg}`); break;
+    case 'warn': console.warn(`⚠️ ${consoleMsg}`); break;
+    default: console.log(`ℹ️ ${consoleMsg}`); break;
+  }
+
   try {
     await Log.create({
       message,
@@ -44,6 +53,7 @@ async function writeLog(
       workerId: meta.workerId || "agent-1",
       taskId: meta.taskId,
       workflowId: meta.workflowId,
+      // Trace ID deliberately not persisted to DB per maintainer request, kept as console telemetry
     });
   } catch (err) {
     console.error("Failed to write log:", err.message);
