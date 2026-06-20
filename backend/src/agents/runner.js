@@ -368,14 +368,18 @@ async function runWorkerLoop() {
               : null;
 
             if (cachedResult) {
-              console.log(`⏭️ [Replay] Fast-forwarding previously executed step: ${stepNode.name}`);
+              writeLog(`[Replay] Fast-forwarding previously executed step: ${stepNode.name}`, 'info', {
+                workerId: WORKER_ID, taskId: task._id, workflowId: task.workflowId, traceId: branchContext.traceId
+              });
               result = cachedResult;
               // The specific stepResult will already contain the updated output/feedback
               // from when the user approved or rejected it via the API.
             } else {
+              writeLog(`Executing Step: ${stepNode.name} (${stepNode.type})`, 'info', {
+                workerId: WORKER_ID, taskId: task._id, workflowId: task.workflowId, traceId: branchContext.traceId
+              });
               result = await executeStep(stepNode, branchContext, agent);
-              console.log(`StepNode: ${stepNode.name}`);
-              console.log(`result: ${result}`);
+              
               if (!result) {
                 throw new Error(
                   `executeStep returned ${result} for step ${stepNode.name} (${stepNode.type})`
@@ -383,7 +387,6 @@ async function runWorkerLoop() {
               }
               result.name = stepNode.name;
               result.type = stepNode.type;
-              console.log(`result name: ${result.name}`);
               await Task.findByIdAndUpdate(task._id, { $push: { stepResults: result } });
             }
 
@@ -401,10 +404,6 @@ async function runWorkerLoop() {
             const nextEdge = getNextEdge(stepNode, result);
             const nextStepId = nextEdge ? nextEdge.target : null;
 
-            console.log(`[DEBUG] result:`, result);
-            console.log(`[DEBUG] cachedResult:`, cachedResult);
-            console.log(`[DEBUG] result.requiresApproval:`, result.requiresApproval);
-
             // ── HITL: Pause execution if this step requires human approval ──
             if (result.requiresApproval && !cachedResult) {
               await Task.findByIdAndUpdate(task._id, {
@@ -416,11 +415,11 @@ async function runWorkerLoop() {
                   },
                 },
               });
-              console.log(`⏸️ Task ${task._id} paused for approval at step ${getStepId(stepNode)}`);
-              writeLog('Task paused for approval', 'info', {
+              writeLog(`Task ${task._id} paused for approval at step ${getStepId(stepNode)}`, 'info', {
                 workerId: WORKER_ID,
                 taskId: task._id,
                 stepId: getStepId(stepNode),
+                traceId: branchContext.traceId
               });
               return { success: false, branchContext, paused: true };
             }
@@ -460,7 +459,12 @@ async function runWorkerLoop() {
         console.error('Telemetry failed:', err.message || err);
       });
 
-      console.log(`✅ Task ${task._id} completed. Success: ${success}`);
+      writeLog(`Task ${task._id} completed. Success: ${success}`, 'info', {
+        workerId: WORKER_ID,
+        taskId: task._id,
+        workflowId: task.workflowId,
+        traceId: context.traceId
+      });
     } catch (error) {
       console.error('❌ Worker loop error:', error);
       await sleep(SAFE_FALLBACK_SETTINGS.pollIntervalMs);

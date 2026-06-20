@@ -1,6 +1,7 @@
 require('dotenv').config();
 const { performance } = require('perf_hooks');
 const { ExecutionError, TimeoutError } = require('./utils/errors');
+const { writeLog } = require('./logger');
 
 const handlers = {
   llm: require('./handlers/llm.handler'),
@@ -54,7 +55,15 @@ async function executeStep(step, context = {}, agent = null) {
       }
 
       if (attempt < maxRetries) {
-        console.warn(`⚠️ Step '${validatedStepId}' failed (Attempt ${attempt + 1}/${maxRetries + 1}). Retrying in ${currentBackoffMs}ms...`);
+        writeLog(
+          `Step '${validatedStepId}' failed (Attempt ${attempt + 1}/${maxRetries + 1}). Retrying in ${currentBackoffMs}ms...`, 
+          'warn', 
+          { 
+            traceId: context?.traceId,
+            taskId: context?.taskId,
+            workflowId: context?.workflow?._id 
+          }
+        );
         await new Promise(res => setTimeout(res, currentBackoffMs));
         currentBackoffMs = Math.floor(currentBackoffMs * backoffMultiplier);
         continue;
@@ -95,7 +104,15 @@ async function executeStep(step, context = {}, agent = null) {
       };
 
       if (attempt < maxRetries) {
-        console.warn(`⚠️ Step '${validatedStepId}' threw error (Attempt ${attempt + 1}/${maxRetries + 1}). Retrying in ${currentBackoffMs}ms...`);
+        writeLog(
+          `Step '${validatedStepId}' threw error (Attempt ${attempt + 1}/${maxRetries + 1}). Retrying in ${currentBackoffMs}ms...`, 
+          'warn', 
+          { 
+            traceId: context?.traceId,
+            taskId: context?.taskId,
+            workflowId: context?.workflow?._id 
+          }
+        );
         await new Promise(res => setTimeout(res, currentBackoffMs));
         currentBackoffMs = Math.floor(currentBackoffMs * backoffMultiplier);
         continue;
