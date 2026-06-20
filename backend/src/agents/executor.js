@@ -47,7 +47,9 @@ async function executeStep(step, context = {}, agent = null) {
       lastResult = result;
 
       if (result.success || result.requiresApproval) {
-        result.durationMs = Math.round(performance.now() - stepStartTimeMs);
+        if (!result.requiresApproval) {
+          result.durationMs = Math.round(performance.now() - stepStartTimeMs);
+        }
         return result;
       }
 
@@ -103,7 +105,7 @@ async function executeStep(step, context = {}, agent = null) {
     }
   }
 
-  if (lastResult && !lastResult.durationMs) {
+  if (lastResult && !lastResult.durationMs && !lastResult.requiresApproval) {
     lastResult.durationMs = Math.round(performance.now() - stepStartTimeMs);
   }
   
