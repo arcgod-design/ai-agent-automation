@@ -4,8 +4,7 @@ import type { FormEvent } from 'react';
 import { useEffect, useState, useCallback, memo, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { AppSidebar } from '@/components/app-sidebar';
-import { AuthGuard } from '@/components/auth/auth-guard';
+import { AuthenticatedLayout } from '@/components/layout/authenticated-layout';
 import { FilterBar } from '@/components/layout/filter-bar';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Badge } from '@/components/ui/badge';
@@ -539,14 +538,8 @@ export default function WorkflowsPage() {
     router.replace(`${pathname}?${params.toString()}`);
   }
   return (
-    <AuthGuard>
-      <div className="flex min-h-screen">
-        <AppSidebar />
-        <main
-          className="flex-1 transition-[padding] duration-300"
-          style={{ paddingLeft: 'var(--sidebar-width, 256px)' }}
-        >
-          <div className="p-8">
+    <AuthenticatedLayout>
+      <>
             <div className="mb-8 flex items-center justify-between">
               <div>
                 <h1 className="text-3xl font-bold">Workflows</h1>
@@ -682,9 +675,6 @@ export default function WorkflowsPage() {
                 )}
               </div>
             )}
-          </div>
-        </main>
-
         <CreateWorkflowModal
           mode={open}
           onOpenChange={() => setOpen(false)}
@@ -700,8 +690,8 @@ export default function WorkflowsPage() {
           close={() => setWorkflowToDelete(null)}
           refresh={fetchWorkflows}
         />
-      </div>
-    </AuthGuard>
+      </>
+    </AuthenticatedLayout>
   );
 }
 
