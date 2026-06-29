@@ -1,9 +1,7 @@
 const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
 const User = require("../models/user.model");
 const { ensureSystemSettingsForUser } = require("../services/systemSettings.service");
-
-const JWT_SECRET = process.env.JWT_SECRET || "change_this_secret";
+const generateToken = require("../utils/generateToken");
 
 async function register(req, res) {
   try {
@@ -32,16 +30,7 @@ async function register(req, res) {
     // ✅ CREATE SYSTEM SETTINGS
     await ensureSystemSettingsForUser(user._id);
 
-    const token = jwt.sign(
-      {
-        sub: user._id,
-        email: user.email,
-        role: user.role,
-        name: user.name,
-      },
-      JWT_SECRET,
-      { expiresIn: "7d" }
-    );
+    const token = generateToken(user);
 
     res.json({
       ok: true,
@@ -80,16 +69,7 @@ async function login(req, res) {
     // ✅ ENSURE SETTINGS EXIST
     await ensureSystemSettingsForUser(user._id);
 
-    const token = jwt.sign(
-      {
-        sub: user._id,
-        email: user.email,
-        role: user.role,
-        name: user.name,
-      },
-      JWT_SECRET,
-      { expiresIn: "7d" }
-    );
+    const token = generateToken(email);
 
     res.json({
       ok: true,
