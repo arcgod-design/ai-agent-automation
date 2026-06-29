@@ -330,7 +330,7 @@ async function updateWorkflowSteps(req, res) {
       }
 
       return {
-        stepId: rest.stepId,
+        stepId: rest.stepId || rest.id,
         name: rest.name,
         type: finalType,
         position: rest.position,
@@ -609,7 +609,42 @@ async function generateWorkflowAI(req, res) {
 
     const graph = await generateWorkflowGraph({ description, existingGraph });
 
-    return res.json({ ok: true, steps: graph.steps, edges: graph.edges });
+    const normalizedSteps = graph.steps.map((step) => {
+      let finalType = step.type;
+      let toolParams = {};
+
+      switch (step.type) {
+        case 'llm': finalType = 'LLM'; break;
+        case 'http': finalType = 'HTTP'; break;
+        case 'delay': finalType = 'Delay'; break;
+        case 'condition': finalType = 'Condition'; break;
+        case 'switch': finalType = 'Switch'; break;
+        case 'document_query': finalType = 'Document'; break;
+        case 'email':
+          finalType = 'Tool';
+          toolParams = { tool: 'email' };
+          break;
+        case 'file':
+          finalType = 'Tool';
+          toolParams = { tool: 'file' };
+          break;
+        case 'browser':
+          finalType = 'Tool';
+          toolParams = { tool: 'browser' };
+          break;
+      }
+
+      return {
+        ...step,
+        ...(step.config || {}),
+        id: step.stepId || step.id,
+        stepId: step.stepId || step.id,
+        type: finalType,
+        ...toolParams,
+      };
+    });
+
+    return res.json({ ok: true, steps: normalizedSteps, edges: graph.edges });
   } catch (err) {
     console.error('generateWorkflowAI error', err);
     const knownValidationErrors = [
