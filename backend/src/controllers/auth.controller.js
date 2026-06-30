@@ -69,7 +69,7 @@ async function login(req, res) {
     // ✅ ENSURE SETTINGS EXIST
     await ensureSystemSettingsForUser(user._id);
 
-    const token = generateToken(email);
+    const token = generateToken(user);
 
     res.json({
       ok: true,
