@@ -100,7 +100,13 @@ Do not include markdown formatting like \`\`\`json.`;
   try {
     let rawText = llmRes.text.trim();
     rawText = rawText.replace(/^```json\n?/, '').replace(/^```\n?/, '').replace(/\n?```$/, '');
-    parsedOutput = JSON.parse(rawText.trim());
+    const parsed = JSON.parse(rawText.trim());
+    
+    if (typeof parsed?.content?.result === 'string') {
+      parsedOutput = parsed;
+    } else {
+      throw new Error("Invalid schema");
+    }
   } catch (e) {
     parsedOutput = {
       from: agent?.name || 'agent',
@@ -125,11 +131,12 @@ Do not include markdown formatting like \`\`\`json.`;
     );
   }
 
-    return createStepResult({
+  return createStepResult({
     stepId: validatedStepId,
     type: 'agent_call',
     input: inputPayload,
-    output: parsedOutput,
+    output: parsedOutput.content.result,
+    fullResponse: parsedOutput,
     raw: llmRes?.raw,
     success: true,
     metrics: memoryMetrics,
