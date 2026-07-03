@@ -20,6 +20,7 @@ import {
   Database,
   ShieldCheck,
   Globe,
+  Play,
   RotateCcw,
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
@@ -156,15 +157,17 @@ export default function TaskDetailPage() {
   const [isResuming, setIsResuming] = useState(false);
   const [isRerunning, setIsRerunning] = useState(false);
 
-  async function handleResumeTask() {
+  async function handleResumeTask(resumeStepId?: string) {
     if (!task) return;
     setIsResuming(true);
     try {
       const res = await fetch(apiUrl(`/tasks/${task._id}/resume`), {
         method: "POST",
         headers: {
+          "Content-Type": "application/json",
           Authorization: "Bearer " + localStorage.getItem("token"),
         },
+        body: JSON.stringify({ resumeStepId }),
       });
       const data = await res.json();
       if (data.ok) {
@@ -416,7 +419,7 @@ export default function TaskDetailPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={handleResumeTask}
+                      onClick={() => handleResumeTask()}
                       disabled={isResuming}
                       className="bg-primary/10 text-primary hover:bg-primary/20 border-primary/20"
                     >
@@ -631,6 +634,7 @@ export default function TaskDetailPage() {
                                       <Badge variant="outline" className="text-xs">
                                         {step.type}
                                       </Badge>
+                                      
                                       {step.executedBy?.agentName && (
                                         <Badge variant="secondary" className="text-[10px] bg-indigo-500/10 text-indigo-600 border-indigo-500/20 dark:text-indigo-400 flex items-center gap-1.5">
                                           <Bot className="size-3" />
@@ -638,6 +642,24 @@ export default function TaskDetailPage() {
                                           <span className="opacity-40 mx-0.5">|</span>
                                           {step.executedBy.provider}/{step.executedBy.model}
                                         </Badge>
+                                      )}
+
+                                      {['failed', 'retrying', 'rejected'].includes(task.status) && (
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          className="h-6 px-2 text-[10px] text-primary hover:text-primary-hover flex items-center gap-1 bg-primary/5 hover:bg-primary/10 border-primary/20"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleResumeTask(step.stepId);
+                                          }}
+                                          disabled={isResuming}
+                                        >
+                                          <Play className="size-2.5" />
+                                          Resume from here
+                                        </Button>
+                                      )}
+                                    </div>
                                       )}
                                     </div>
 
