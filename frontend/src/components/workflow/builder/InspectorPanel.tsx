@@ -9,10 +9,7 @@ import { Button } from '@/components/ui/button';
 interface InspectorPanelProps {
   selectedNodeId: string | null;
   steps: WorkflowNode[];
-  edges: WorkflowEdge[];
   nodeDefinitions: NodeDefinition[];
-  documents: WorkflowDocument[];
-  mcpTools: McpTool[];
   onUpdateStep: (stepId: string, patch: Partial<WorkflowNode>) => void;
   onClose: () => void;
 }
@@ -20,10 +17,7 @@ interface InspectorPanelProps {
 export function InspectorPanel({
   selectedNodeId,
   steps,
-  edges,
   nodeDefinitions,
-  documents,
-  mcpTools,
   onUpdateStep,
   onClose,
 }: InspectorPanelProps) {
@@ -82,11 +76,6 @@ export function InspectorPanel({
                         config: { ...(step.config || {}), [field.name]: val },
                       });
                     }}
-                    documents={documents}
-                    mcpTools={mcpTools}
-                    steps={steps}
-                    edges={edges}
-                    currentStepId={step.id}
                   />
                 </div>
               </div>

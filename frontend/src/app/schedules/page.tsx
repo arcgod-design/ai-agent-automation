@@ -77,7 +77,7 @@ export default function SchedulesPage() {
   });
 
   const nextExecutionFormatted = nextExecution
-    ? nextExecution.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    ? new Date(nextExecution as any).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     : '-';
 
   // Timeline representation (7 days)

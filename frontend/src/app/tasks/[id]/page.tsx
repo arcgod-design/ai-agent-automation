@@ -706,8 +706,8 @@ export default function TaskDetailPage() {
                 )}
 
                 {/* Step Details & Logs (Side by side below) */}
-                <div className="flex flex-row gap-6 w-full flex-1 min-h-[400px]">
-                  <div className="flex-1 min-w-[350px] flex flex-col">
+                <div className="flex flex-col lg:flex-row gap-6 w-full flex-1 min-h-[400px]">
+                  <div className="flex-1 min-w-0 lg:min-w-[350px] flex flex-col">
                     <StepDetailsPane
                       step={
                         task.metadata?.steps?.find(
@@ -719,7 +719,7 @@ export default function TaskDetailPage() {
                       taskId={task._id}
                     />
                   </div>
-                  <div className="flex-1 min-w-[350px] flex flex-col">
+                  <div className="flex-1 min-w-0 lg:min-w-[350px] flex flex-col">
                     <StepLogsPane taskId={task._id} />
                   </div>
                 </div>

@@ -114,7 +114,8 @@ export function PremiumNode({ data, selected }: { data: PremiumNodeData; selecte
         <Button
           variant="ghost"
           size="icon"
-          className="size-6 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive hover:bg-destructive/10 -mr-1"
+          aria-label="Delete node"
+          className="size-6 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity text-muted-foreground hover:text-destructive hover:bg-destructive/10 -mr-1"
           onClick={(e) => {
             e.stopPropagation();
             if (data.onDelete) {
