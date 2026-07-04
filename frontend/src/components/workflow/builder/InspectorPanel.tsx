@@ -1,10 +1,4 @@
-import type {
-  NodeDefinition,
-  WorkflowNode,
-  WorkflowEdge,
-  WorkflowDocument,
-  McpTool,
-} from '@/types/workflow';
+import type { NodeDefinition, WorkflowNode } from '@/types/workflow';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
