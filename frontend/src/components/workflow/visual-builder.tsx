@@ -19,6 +19,7 @@ import { getAgents } from '@/lib/api';
 import type { WorkflowAgent } from '@/types/workflow';
 import { useParams } from 'next/navigation';
 import ReplayDialog from './replay-dialog';
+import { QuickAddPalette } from './quick-add-palette';
 import { usePerformanceMonitor } from '@/hooks/usePerformanceMonitor';
 import type {
   StepType,
@@ -313,6 +314,7 @@ export default function VisualBuilder({
   const [mcpTools, setMcpTools] = useState<McpTool[]>([]);
   const [agents, setAgents] = useState<WorkflowAgent[]>([]);
   const [flowEdges, setFlowEdges] = useState<Edge[]>(() => (edges as unknown as Edge[]) || []);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const selectedStep = steps.find((s) => s.id === selectedNode?.id);
   const selectedMcpTool = mcpTools.find(
     (tool) => tool.serverId === selectedStep?.serverId && tool.name === selectedStep?.toolName
@@ -470,6 +472,12 @@ export default function VisualBuilder({
         return;
       }
 
+      if (isMod && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setCommandPaletteOpen((prev) => !prev);
+        return;
+      }
+
       if (e.key === 'Delete' && selectedNode) {
         e.preventDefault();
         deleteNode(selectedNode.id);
@@ -479,7 +487,7 @@ export default function VisualBuilder({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onSave, selectedNode, steps, flowEdges, deleteNode, setSteps]);
+  }, [onSave, selectedNode, steps, flowEdges, deleteNode, setSteps, setCommandPaletteOpen]);
 
   /* ---------- EVENTS ---------- */
 
@@ -870,12 +878,21 @@ export default function VisualBuilder({
 
   return (
     <div className="h-[720px] rounded-xl border bg-gradient-to-b from-background to-muted/40 relative overflow-hidden">
-      <div className="absolute z-20 top-4 left-4">
+      <div className="absolute z-20 top-4 left-4 flex items-center gap-3">
         <button
           onClick={addNode}
           className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg shadow-md hover:scale-[1.02] hover:shadow-lg transition"
         >
           + Add Step
+        </button>
+        <button
+          onClick={() => setCommandPaletteOpen(true)}
+          className="flex items-center gap-2 px-3 py-2 bg-card text-muted-foreground border rounded-lg shadow-md hover:scale-[1.02] hover:text-foreground transition text-xs font-semibold"
+        >
+          <span>Quick Add</span>
+          <kbd className="bg-muted text-muted-foreground inline-flex h-5 items-center gap-0.5 rounded border px-1.5 font-sans font-medium">
+            <span className="text-[10px]">⌘</span>K
+          </kbd>
         </button>
       </div>
 
@@ -914,6 +931,100 @@ export default function VisualBuilder({
         <Controls className="bg-card border rounded-md shadow" />
         <Background gap={24} size={1} />
       </ReactFlow>
+
+      {/* Command-K "Quick-Add" Palette Modal */}
+      <QuickAddPalette
+        open={commandPaletteOpen}
+        onOpenChange={setCommandPaletteOpen}
+        nodeDefinitions={nodeDefinitions}
+        onSelectNode={(nodeType) => {
+          // Determine placement: relative to last selected node, or center of view
+          let placementX = Math.random() * 200 + 150;
+          let placementY = Math.random() * 200 + 150;
+
+          if (selectedNode && selectedNode.position) {
+            placementX = selectedNode.position.x + 280; // place to the right
+            placementY = selectedNode.position.y;
+          } else if (nodes.length > 0) {
+            // Place next to the last node
+            const lastNode = nodes[nodes.length - 1];
+            placementX = lastNode.position.x + 280;
+            placementY = lastNode.position.y;
+          }
+
+          const id = generateNodeId(nodeType.toLowerCase());
+
+          // Match custom field default values from definition
+          const matchingDef = nodeDefinitions.find((def) => def.id === nodeType);
+          const defaultConfig: Record<string, any> = {};
+          if (matchingDef) {
+            matchingDef.fields.forEach((field) => {
+              if (field.default !== undefined) {
+                defaultConfig[field.name] = field.default;
+              }
+            });
+          }
+
+          const node: StepNode = {
+            id,
+            type: 'default',
+            position: { x: placementX, y: placementY },
+            data: {
+              label: (
+                <div className="flex items-center justify-between gap-2">
+                  <span>{matchingDef?.name || nodeType}</span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteNode(id);
+                    }}
+                    className="text-red-500 hover:text-red-600 text-xs"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ),
+            },
+            style: {
+              padding: '12px 16px',
+              borderRadius: '12px',
+              border: `1px solid ${getNodeColor(nodeType)}`,
+              background: 'var(--card)',
+              color: 'var(--foreground)',
+              fontSize: '14px',
+              fontWeight: 500,
+              minWidth: 240,
+              cursor: 'pointer',
+              maxWidth: 240,
+              textAlign: 'center' as const,
+              boxShadow: `0 0 0 1px ${getNodeColor(nodeType)}20, 0 2px 6px rgba(0,0,0,0.05)`,
+              touchAction: 'none',
+            },
+          };
+
+          historyRef.current.push({
+            steps: [...steps],
+            edges: [...flowEdges] as unknown as WorkflowEdge[],
+          });
+          futureRef.current = [];
+
+          setNodes((n) => [...n, node]);
+          setSteps((prev) => [
+            ...prev,
+            {
+              id,
+              name: matchingDef?.name || `New ${nodeType} Step`,
+              type: nodeType as StepType,
+              config: defaultConfig,
+            },
+          ]);
+
+          addToast({
+            type: 'success',
+            title: `Added "${matchingDef?.name || nodeType}" node`,
+          });
+        }}
+      />
 
       <ReplayDialog
         workflowId={workflowId}
