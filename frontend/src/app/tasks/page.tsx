@@ -359,6 +359,7 @@ export default function TasksPage() {
                               size="icon"
                               className="size-8 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
                               onClick={() => deleteTask(task._id)}
+                              aria-label="Delete task"
                             >
                               <Trash2 className="size-4" />
                             </Button>
@@ -384,6 +385,7 @@ export default function TasksPage() {
                     className="size-8"
                     disabled={page === 1}
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    aria-label="Previous page"
                   >
                     <span className="text-xs">&lt;</span>
                   </Button>
@@ -416,6 +418,7 @@ export default function TasksPage() {
                     className="size-8"
                     disabled={page === totalPages}
                     onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    aria-label="Next page"
                   >
                     <span className="text-xs">&gt;</span>
                   </Button>

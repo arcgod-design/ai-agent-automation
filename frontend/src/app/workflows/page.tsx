@@ -379,6 +379,7 @@ const HorizontalWorkflowCard = memo(
                 variant="secondary"
                 size="icon"
                 className="size-11 rounded-xl bg-muted/30 hover:bg-primary/20 hover:text-primary transition-colors"
+                aria-label="Run workflow"
               >
                 <Play className="size-5" fill="currentColor" />
               </Button>
@@ -391,6 +392,7 @@ const HorizontalWorkflowCard = memo(
                 e.preventDefault();
                 onEdit(workflow);
               }}
+              aria-label="Edit workflow"
             >
               <Pencil className="size-4" />
             </Button>
@@ -402,6 +404,7 @@ const HorizontalWorkflowCard = memo(
                 e.preventDefault();
                 onCopy(workflow._id);
               }}
+              aria-label="Copy workflow ID"
             >
               <Copy className="size-4" />
             </Button>
@@ -412,6 +415,7 @@ const HorizontalWorkflowCard = memo(
                   variant="ghost"
                   size="icon"
                   className="size-11 rounded-xl hover:bg-muted transition-colors"
+                  aria-label="More options"
                 >
                   <MoreVertical className="size-4" />
                 </Button>
@@ -526,6 +530,7 @@ const VerticalWorkflowCard = memo(
                         e.preventDefault();
                         onCopy(workflow._id);
                       }}
+                      aria-label="Copy workflow ID"
                     >
                       {isCopied ? (
                         <Check className="size-3 text-green-500" />
@@ -546,6 +551,7 @@ const VerticalWorkflowCard = memo(
                   e.preventDefault();
                   onEdit(workflow);
                 }}
+                aria-label="Edit workflow"
               >
                 <Pencil className="size-3 text-muted-foreground" />
               </Button>
@@ -558,6 +564,7 @@ const VerticalWorkflowCard = memo(
                   e.stopPropagation();
                   onDelete(workflow);
                 }}
+                aria-label="Delete workflow"
               >
                 <Trash2 className="size-3" />
               </Button>
