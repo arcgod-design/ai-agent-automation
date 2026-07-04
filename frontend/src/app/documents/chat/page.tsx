@@ -340,8 +340,8 @@ function MultiDocumentChatContent() {
 
   if (!selectedDocumentIds.length) {
     return (
-      <AuthenticatedLayout layout="panel">
-        <div className="flex flex-1 min-h-0 items-center justify-center p-6">
+      <AuthenticatedLayout layout="full">
+        <div className="flex min-h-screen items-center justify-center p-6">
           <Empty>
             <EmptyHeader>
               <EmptyMedia variant="icon">
@@ -367,8 +367,8 @@ function MultiDocumentChatContent() {
   }
 
   return (
-    <AuthenticatedLayout layout="panel">
-      <div className="flex flex-col flex-1 min-h-0 gap-5 p-6 overflow-hidden">
+    <AuthenticatedLayout layout="full">
+      <div className="flex flex-col h-full gap-5 p-6 overflow-hidden">
         <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="space-y-2">
             <Button asChild variant="ghost" size="sm" className="-ml-3 w-fit gap-2">

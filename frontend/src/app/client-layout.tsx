@@ -12,6 +12,7 @@ import { Analytics } from '@vercel/analytics/next';
 import { usePathname } from 'next/navigation';
 import { AuthGuard } from '@/components/auth/auth-guard';
 import { SettingsProvider, useSettings } from '@/context/SettingsContext';
+import { MessageCircle } from 'lucide-react';
 
 const PUBLIC_ROUTES = ['/login', '/register', '/privacy'];
 
@@ -46,9 +47,9 @@ function InnerLayout({ children }: { children: React.ReactNode }) {
           {!assistantOpen && (
             <button
               onClick={() => setAssistantOpen(true)}
-              className="fixed bottom-6 right-6 z-40 rounded-full bg-foreground px-4 py-3 text-background shadow-lg hover:opacity-90 transition"
+              className="fixed bottom-6 right-6 z-40 flex items-center rounded-full bg-foreground px-4 py-3 font-semibold text-background shadow-lg hover:opacity-90 transition"
             >
-              💬 Help
+              <MessageCircle className="w-4 h-4 mr-2" /> Help
             </button>
           )}
         </>

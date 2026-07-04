@@ -361,7 +361,6 @@ export default function WorkflowDetailPage() {
       name: workflow.name,
       description: workflow.description || '',
       category: 'Custom',
-      icon: '⚙️',
       tags: ['workflow'],
       steps:
         workflow.metadata?.steps?.map((step) => {
