@@ -87,16 +87,21 @@ export default function MemoryPage() {
   const inspectorScrollRef = useRef<HTMLDivElement | null>(null);
 
   async function fetchMemories() {
-    const url = apiUrl('/memory?search=') + encodeURIComponent(search);
-    const res = await fetch(url, {
-      headers: {
-        Authorization: 'Bearer ' + localStorage.getItem('token'),
-      },
-    });
+    try {
+      const url = apiUrl('/memory?search=') + encodeURIComponent(search);
+      const res = await fetch(url, {
+        headers: {
+          Authorization: 'Bearer ' + localStorage.getItem('token'),
+        },
+      });
 
-    const data = await res.json();
-    if (data.ok) setMemories(data.memories);
-    setLoading(false);
+      const data = await res.json();
+      if (data.ok) setMemories(data.memories);
+    } catch (error) {
+      console.error('Failed to fetch memories:', error);
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
