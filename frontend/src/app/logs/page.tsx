@@ -70,7 +70,7 @@ function getLogIcon(log: Log) {
   if (msg.includes("failed")) return <AlertCircle className="size-4 text-destructive" />;
   if (msg.includes("completed") && msg.includes("success")) return <CheckCircle2 className="size-4 text-success" />;
   if (msg.includes("executing")) return <Play className="size-4 text-cyan-400" />;
-  if (msg.includes("claimed")) return <Activity className="size-4 text-purple-400" />;
+  if (msg.includes("claimed")) return <Activity className="size-4 text-purple-500" />;
   return getLevelIcon(log.level);
 }
 
@@ -89,7 +89,7 @@ function getLogColor(log: Log) {
   if (msg.includes("failed")) return "text-destructive";
   if (msg.includes("completed") && msg.includes("success")) return "text-success";
   if (msg.includes("executing")) return "text-cyan-400";
-  if (msg.includes("claimed")) return "text-purple-400";
+  if (msg.includes("claimed")) return "text-purple-500";
   return getLevelColor(log.level);
 }
 
@@ -118,7 +118,7 @@ function getSeverityBorder(log: Log) {
   if (msg.includes("failed")) return "border-destructive";
   if (msg.includes("completed") && msg.includes("success")) return "border-emerald-500";
   if (msg.includes("executing")) return "border-cyan-400";
-  if (msg.includes("claimed")) return "border-purple-400";
+  if (msg.includes("claimed")) return "border-purple-500";
   
   switch (log.level) {
     case "success": return "border-emerald-500";
@@ -134,7 +134,7 @@ function getBadgeBg(log: Log) {
   if (msg.includes("failed")) return "bg-destructive/10 text-destructive";
   if (msg.includes("completed") && msg.includes("success")) return "bg-emerald-500/10 text-emerald-500";
   if (msg.includes("executing")) return "bg-cyan-400/10 text-cyan-400";
-  if (msg.includes("claimed")) return "bg-purple-400/10 text-purple-400";
+  if (msg.includes("claimed")) return "bg-purple-500/10 text-purple-500";
   
   switch (log.level) {
     case "success": return "bg-emerald-500/10 text-emerald-500";
@@ -548,8 +548,8 @@ export default function LogsPage() {
                            [{new Date(log.createdAt).toLocaleTimeString()}]
                          </span>
                          <Badge
-                           variant="outline"
-                           className={`mx-2 border-current text-[10px] h-4 px-1.5 ${getLogColor(log)}`}
+                           variant="secondary"
+                           className={`mx-2 border-none rounded text-[10px] h-4 px-1.5 uppercase ${getBadgeBg(log)}`}
                          >
                            {getLogBadge(log)}
                          </Badge>
