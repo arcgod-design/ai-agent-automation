@@ -151,11 +151,11 @@ function PlaygroundInner() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-2rem)] flex-col -mx-4 -mb-4 -mt-4 lg:flex-row overflow-hidden border border-border/50 rounded-2xl bg-background/50 backdrop-blur-sm shadow-sm">
+    <div className="flex flex-col lg:flex-row border border-border/50 rounded-2xl bg-background/50 backdrop-blur-sm shadow-sm">
       {/* ── Left/Center: Main Execution Area ── */}
-      <div className="flex flex-1 flex-col border-r border-border/50 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/5 via-background to-background">
+      <div className="flex flex-col flex-1 border-r border-border/50 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/5 via-background to-background">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-border/50 bg-background/80 px-6 py-4 backdrop-blur-sm">
+        <div className="flex items-center justify-between border-b border-border/50 bg-background/80 px-6 py-4 backdrop-blur-sm shrink-0">
           <div className="flex items-center gap-3">
             <div className="rounded-xl bg-primary/10 p-2 border border-primary/20 shadow-[0_0_15px_rgba(var(--primary),0.1)]">
               <Sparkles className="size-5 text-primary" />
@@ -188,7 +188,7 @@ function PlaygroundInner() {
         </div>
 
         {/* Output Area */}
-        <ScrollArea className="flex-1 p-6">
+        <div className="flex-1 p-6">
           <div className="max-w-4xl mx-auto w-full pb-8">
             {/* Empty state */}
             {!result && !loading && !lastPrompt && (
@@ -288,10 +288,10 @@ function PlaygroundInner() {
               </div>
             )}
           </div>
-        </ScrollArea>
+        </div>
 
         {/* Prompt Input */}
-        <div className="p-4 bg-background/80 border-t border-border/50 backdrop-blur-md shrink-0">
+        <div className="p-4 bg-background/80 border-t border-border/50 backdrop-blur-md shrink-0 sticky bottom-0 z-10">
           <div className="max-w-4xl mx-auto relative rounded-2xl border border-border/60 bg-background shadow-sm focus-within:ring-1 focus-within:ring-primary/50 focus-within:border-primary/50 transition-all overflow-hidden">
             <textarea
               ref={textareaRef}
@@ -335,8 +335,8 @@ function PlaygroundInner() {
       </div>
 
       {/* ── Right: Sidebar Context ── */}
-      <div className="w-full lg:w-[320px] bg-background/50 border-l border-border/50 flex flex-col h-full shrink-0">
-        <ScrollArea className="flex-1">
+      <div className="w-full lg:w-[320px] bg-background/50 border-l border-border/50 flex flex-col shrink-0">
+        <div className="flex-1">
           <div className="p-5 space-y-6">
             {/* Agent Profile Card */}
             <div className="space-y-3">
@@ -491,7 +491,7 @@ function PlaygroundInner() {
               </div>
             )}
           </div>
-        </ScrollArea>
+        </div>
       </div>
     </div>
   );
@@ -499,7 +499,7 @@ function PlaygroundInner() {
 
 export default function PlaygroundPage() {
   return (
-    <AuthenticatedLayout>
+    <AuthenticatedLayout layout="default">
       <PlaygroundInner />
     </AuthenticatedLayout>
   );
