@@ -21,7 +21,6 @@ import { cn } from "@/lib/utils";
 
 import { AnalyticsSection } from "@/components/dashboard/analytics-section";
 import { KPIBar } from "@/components/dashboard/kpi-bar";
-import { SystemHealthCard } from "@/components/dashboard/system-health-card";
 import { TokenUsageCard } from "@/components/dashboard/token-usage-card";
 import { WorkflowsStatusCard } from "@/components/dashboard/workflows-status-card";
 
@@ -187,35 +186,30 @@ function DashboardPageInner() {
   if (!isMounted) return null;
 
   return (
-    <PageContainer>
-      <div className="flex flex-col gap-6">
+    <PageContainer className="gap-4 md:gap-5 py-4 md:py-5">
+      <div className="flex flex-col gap-4 md:gap-5">
         
-        {/* Top Row: KPI Bar & System Health */}
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-          <div className="xl:col-span-8 flex">
-            <KPIBar stats={stats} loading={statsLoading} />
-          </div>
-          <div className="xl:col-span-4 flex">
-            <div className="w-full h-full"><SystemHealthCard /></div>
-          </div>
+        {/* Top Row: Command Center */}
+        <div className="w-full">
+          <KPIBar stats={stats} loading={statsLoading} tasks={tasks} />
         </div>
 
         {/* Middle Section */}
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 md:gap-5">
           
           {/* Left Column Stack */}
-          <div className="xl:col-span-8 flex flex-col gap-6">
+          <div className="xl:col-span-8 flex flex-col gap-4 md:gap-5">
             <AnalyticsSection stats={stats} loading={statsLoading} />
             <TokenUsageCard />
           </div>
 
           {/* Right Column Stack */}
-          <div className="xl:col-span-4 flex flex-col">
-            <Card className="flex-1 flex flex-col border-border/15 bg-card/20 shadow-sm rounded-xl overflow-hidden min-h-[400px]">
-              <div className="px-6 py-5 border-b border-border/10">
+          <div className="xl:col-span-4">
+            <Card className="h-[400px] xl:h-[510px] flex flex-col border-border/15 bg-card/20 shadow-sm rounded-xl overflow-hidden">
+              <div className="px-5 py-4 border-b border-border/10 shrink-0">
                 <h2 className="text-base font-medium text-foreground/90 tracking-tight">Live Feed</h2>
               </div>
-              <div className="p-6 space-y-5 flex-1 overflow-y-auto">
+              <div className="p-5 space-y-4 flex-1 min-h-0 overflow-y-auto">
                 {tasksLoading ? (
                   <ListSkeleton rows={5} className="border-none divide-none" />
                 ) : recentTasks.length > 0 ? (
@@ -234,16 +228,16 @@ function DashboardPageInner() {
                         </div>
                       </div>
                       
-                      <div className="flex flex-col gap-1 pb-1">
-                        <p className="text-sm text-muted-foreground/80 leading-snug">
-                          <span className="text-muted-foreground/60 mr-2 text-[11px] font-medium tracking-wider">
+                      <div className="flex flex-col gap-1 pb-1 min-w-0 flex-1">
+                        <p className="text-sm text-muted-foreground/80 leading-snug break-words">
+                          <span className="text-muted-foreground/60 mr-2 text-[11px] font-medium tracking-wider whitespace-nowrap">
                             {new Date(task.startedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'})}
                           </span>
                           <span className="mr-1.5 text-muted-foreground/40">-</span>
                           Workflow <span className="font-medium text-foreground/90 group-hover:text-foreground transition-colors">"{task.name}"</span> {task.status}
                         </p>
                         {task.metadata?.runningBy && (
-                          <p className="text-[10px] text-muted-foreground/40 font-mono mt-0.5 tracking-wider">
+                          <p className="text-[10px] text-muted-foreground/40 font-mono mt-0.5 tracking-wider truncate">
                             Connection: {task.metadata.runningBy}
                           </p>
                         )}
@@ -257,26 +251,31 @@ function DashboardPageInner() {
                   </div>
                 )}
               </div>
+              <div className="px-5 py-3 border-t border-border/10 shrink-0 bg-muted/5">
+                <Link href="/tasks" className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors w-full flex justify-center py-1">
+                  View All Activity
+                </Link>
+              </div>
             </Card>
           </div>
           
         </div>
 
         {/* Lower Middle Section: Workflows Status & Recently Modified */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5 w-full">
           <WorkflowsStatusCard />
           
           <Card className="flex flex-col border-border/15 bg-card/20 shadow-sm rounded-xl overflow-hidden h-full min-h-[300px]">
-            <div className="flex items-center justify-between px-6 py-5 border-b border-border/10">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border/10">
               <h2 className="text-base font-medium text-foreground/90 tracking-tight">Recently Modified</h2>
               <Link href="/workflows" className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
                 View all
               </Link>
             </div>
             
-            <div className="flex-1 p-0 overflow-x-auto">
+            <div className="flex-1 p-0 overflow-x-auto min-h-0">
               <div className="min-w-[400px]">
-                <div className="grid grid-cols-12 gap-4 px-6 py-3 border-b border-border/10 bg-muted/10 text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">
+                <div className="grid grid-cols-12 gap-4 px-5 py-3 border-b border-border/10 bg-muted/10 text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">
                   <div className="col-span-7">Workflow Name</div>
                   <div className="col-span-3">Status</div>
                   <div className="col-span-2 text-right">Actions</div>
@@ -286,10 +285,10 @@ function DashboardPageInner() {
                   {workflowsLoading ? (
                     <ListSkeleton rows={3} className="border-none divide-none" />
                   ) : workflowsArray.length === 0 ? (
-                    <div className="p-6 text-sm text-muted-foreground/70 text-center">No workflows yet.</div>
+                    <div className="p-5 text-sm text-muted-foreground/70 text-center">No workflows yet.</div>
                   ) : (
                     workflowsArray.slice(0, 4).map((wf: any) => (
-                      <div key={wf._id} className="grid grid-cols-12 gap-4 px-6 py-3.5 items-center group hover:bg-card/40 transition-colors">
+                      <div key={wf._id} className="grid grid-cols-12 gap-4 px-5 py-3.5 items-center group hover:bg-card/40 transition-colors">
                         <div className="col-span-7 flex items-center gap-3">
                           <Workflow className="size-4 text-muted-foreground/50 shrink-0 group-hover:text-primary/70 transition-colors" />
                           <span className="font-medium text-sm text-foreground/80 group-hover:text-foreground transition-colors truncate">{wf.name}</span>
@@ -329,8 +328,8 @@ function DashboardPageInner() {
         </div>
 
         {/* Bottom Section: Quick Actions */}
-        <Card className="flex flex-col border-border/15 bg-card/20 shadow-sm rounded-xl overflow-hidden w-full mb-6">
-          <div className="px-6 py-5 border-b border-border/10 flex items-center justify-between">
+        <Card className="flex flex-col border-border/15 bg-card/20 shadow-sm rounded-xl overflow-hidden w-full mb-4">
+          <div className="px-5 py-4 border-b border-border/10 flex items-center justify-between">
             <h2 className="text-base font-medium text-foreground/90 tracking-tight">Quick Actions</h2>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-border/10">
