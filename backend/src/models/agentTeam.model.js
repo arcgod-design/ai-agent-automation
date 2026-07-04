@@ -6,8 +6,16 @@ const AgentTeamSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
   agents: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Agent' }],
   externalAgents: [{
-    name: { type: String, required: true },
-    webhookUrl: { type: String, required: true },
+    name: { type: String, required: true, trim: true },
+    webhookUrl: { 
+      type: String, 
+      required: true, 
+      trim: true,
+      validate: {
+        validator: (v) => /^https?:\/\/.+/.test(v),
+        message: 'Invalid webhook URL format'
+      }
+    },
     capabilities: { type: [String], default: [] }
   }],
   topology: { 
