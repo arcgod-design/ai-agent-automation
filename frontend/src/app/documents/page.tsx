@@ -1,8 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, useRef } from "react";
-import { AppSidebar } from "@/components/app-sidebar";
-import { AuthGuard } from "@/components/auth/auth-guard";
+import { AuthenticatedLayout } from "@/components/layout/authenticated-layout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -300,15 +299,7 @@ export default function DocumentsPage() {
   );
 
   return (
-    <AuthGuard>
-      <div className="flex min-h-screen bg-background">
-        <AppSidebar />
-
-        <main
-          className="flex-1 transition-[padding] duration-300"
-          style={{ paddingLeft: "var(--sidebar-width, 256px)" }}
-        >
-          <div className="p-8 max-w-6xl mx-auto">
+    <AuthenticatedLayout>
             <div className="mb-8 flex flex-col gap-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -616,9 +607,6 @@ export default function DocumentsPage() {
                 </div>
               </div>
             )}
-          </div>
-        </main>
-      </div>
-    </AuthGuard>
+    </AuthenticatedLayout>
   );
 }

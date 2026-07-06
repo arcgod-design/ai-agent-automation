@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { AppSidebar } from '@/components/app-sidebar';
+import { AuthenticatedLayout } from '@/components/layout/authenticated-layout';
+
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -417,14 +418,8 @@ export default function WorkflowDetailPage() {
   if (!workflow) return <p>Workflow not found.</p>;
 
   return (
-    <div className="flex min-h-screen">
-      <AppSidebar />
-      <main
-        className="flex-1 transition-[padding] duration-300"
-        style={{ paddingLeft: 'var(--sidebar-width, 256px)' }}
-      >
-        <div className="p-8">
-          <div className="mb-8 flex items-center justify-between">
+    <AuthenticatedLayout>
+      <div className="mb-8 flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold">{workflow.name}</h1>
               <p className="mt-2 text-muted-foreground">Workflow pipeline visualization</p>
@@ -574,9 +569,7 @@ export default function WorkflowDetailPage() {
             onOpenChange={setApiSettingsOpen}
             onSaveSuccess={fetchWorkflow}
           />
-        </div>
-      </main>
-    </div>
+    </AuthenticatedLayout>
   );
 }
 

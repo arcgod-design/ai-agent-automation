@@ -3,9 +3,10 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { AppSidebar } from '@/components/app-sidebar';
+
 import { Card } from '@/components/ui/card';
-import { AuthGuard } from '@/components/auth/auth-guard';
+import { AuthenticatedLayout } from "@/components/layout/authenticated-layout";
+
 import { Badge } from '@/components/ui/badge';
 import { useApi } from '@/hooks/useApi';
 import {
@@ -377,14 +378,8 @@ export default function TaskDetailPage() {
   const executedSteps = task.stepResults?.length ?? 0;
   const stepResults = task.stepResults ?? [];
   return (
-    <AuthGuard>
-      <div className="flex min-h-screen">
-        <AppSidebar />
-        <main
-          className="flex-1 transition-[padding] duration-300"
-          style={{ paddingLeft: 'var(--sidebar-width, 256px)' }}
-        >
-          <div className="p-8">
+    <AuthenticatedLayout>
+      <>
             <div className="mb-8">
               <div className="flex items-center gap-3">
                 <h1 className="font-mono text-2xl font-bold">{task.name}</h1>
@@ -767,9 +762,8 @@ export default function TaskDetailPage() {
                 )}
               </div>
             </div>
-          </div>
-        </main>
-      </div>
-    </AuthGuard>
+          
+      </>
+    </AuthenticatedLayout>
   );
 }

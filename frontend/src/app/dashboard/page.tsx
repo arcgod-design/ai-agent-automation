@@ -3,14 +3,13 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { AppSidebar } from "@/components/app-sidebar";
+
 import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/layout/page-header";
-import { PageContainer } from "@/components/layout/page-container";
+import { AuthenticatedLayout } from "@/components/layout/authenticated-layout";
 import { MetricCard } from "@/components/ui/metric-card";
-import { AuthGuard } from "@/components/auth/auth-guard";
 import { MetricCardSkeleton, ListSkeleton } from "@/components/ui/skeletons";
 import { Activity, Workflow, ListChecks, Bot, Calendar, Copy, Loader2, Check, X, Plus, FileText, Wand2, Link2 } from "lucide-react";
 import { useAssistantContext } from "@/context/assistant-context";
@@ -181,15 +180,11 @@ function DashboardPageInner() {
   if (!isMounted) return null;
 
   return (
-    <div className="flex min-h-screen">
-      <AppSidebar />
-
-      <main className="flex-1 transition-[padding] duration-300 md:pl-(--sidebar-width,256px)">
-        <PageContainer>
-          <PageHeader 
-            title="Dashboard" 
-            description="Overview of your AI automation workflows" 
-          />
+    <>
+      <PageHeader 
+        title="Dashboard" 
+        description="Overview of your AI automation workflows" 
+      />
           <div className="flex flex-col gap-8">
             {/* Stats */}
             <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
@@ -220,54 +215,56 @@ function DashboardPageInner() {
                     </Link>
                   </div>
                   
-                  <div className="flex-1 p-0">
-                    {/* Table header */}
-                    <div className="grid grid-cols-12 gap-4 px-5 py-3 border-b border-border/20 bg-muted/20 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
-                      <div className="col-span-6">Workflow Name</div>
-                      <div className="col-span-3">Status</div>
-                      <div className="col-span-3 text-right">Actions</div>
-                    </div>
-                    
-                    <div className="divide-y divide-border/20">
-                      {workflowsLoading ? (
-                        <ListSkeleton rows={3} className="border-none divide-none" />
-                      ) : workflowsArray.length === 0 ? (
-                        <div className="p-5 text-sm text-muted-foreground opacity-70">No workflows yet</div>
-                      ) : (
-                        workflowsArray.slice(0, 5).map((wf: any) => (
-                          <div key={wf._id} className="grid grid-cols-12 gap-4 px-5 py-4 items-center group hover:bg-accent/20 transition-colors">
-                            <div className="col-span-6 flex items-center gap-3">
-                              <Workflow className="size-4 text-muted-foreground/50" />
-                              <span className="font-medium text-sm text-foreground/90">{wf.name}</span>
+                  <div className="flex-1 p-0 overflow-x-auto">
+                    <div className="min-w-[500px]">
+                      {/* Table header */}
+                      <div className="grid grid-cols-12 gap-4 px-5 py-3 border-b border-border/20 bg-muted/20 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                        <div className="col-span-6">Workflow Name</div>
+                        <div className="col-span-3">Status</div>
+                        <div className="col-span-3 text-right">Actions</div>
+                      </div>
+                      
+                      <div className="divide-y divide-border/20">
+                        {workflowsLoading ? (
+                          <ListSkeleton rows={3} className="border-none divide-none" />
+                        ) : workflowsArray.length === 0 ? (
+                          <div className="p-5 text-sm text-muted-foreground opacity-70">No workflows yet</div>
+                        ) : (
+                          workflowsArray.slice(0, 5).map((wf: any) => (
+                            <div key={wf._id} className="grid grid-cols-12 gap-4 px-5 py-4 items-center group hover:bg-accent/20 transition-colors">
+                              <div className="col-span-6 flex items-center gap-3">
+                                <Workflow className="size-4 text-muted-foreground/50" />
+                                <span className="font-medium text-sm text-foreground/90">{wf.name}</span>
+                              </div>
+                              <div className="col-span-3">
+                                <StatusBadge
+                                  status={(wf.status || "draft").toLowerCase() as any}
+                                  variant="subtle"
+                                  className="uppercase text-[10px]"
+                                >
+                                  {wf.status || "DRAFT"}
+                                </StatusBadge>
+                              </div>
+                              <div className="col-span-3 flex justify-end">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleCloneWorkflow(wf._id)}
+                                  disabled={cloningId === wf._id}
+                                  title="Duplicate Workflow"
+                                  className="size-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                  {cloningId === wf._id ? (
+                                    <Loader2 className="size-3 animate-spin text-muted-foreground" />
+                                  ) : (
+                                    <Copy className="size-3 text-muted-foreground" />
+                                  )}
+                                </Button>
+                              </div>
                             </div>
-                            <div className="col-span-3">
-                              <StatusBadge
-                                status={(wf.status || "draft").toLowerCase() as any}
-                                variant="subtle"
-                                className="uppercase text-[10px]"
-                              >
-                                {wf.status || "DRAFT"}
-                              </StatusBadge>
-                            </div>
-                            <div className="col-span-3 flex justify-end">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleCloneWorkflow(wf._id)}
-                                disabled={cloningId === wf._id}
-                                title="Duplicate Workflow"
-                                className="size-7 opacity-0 group-hover:opacity-100 transition-opacity"
-                              >
-                                {cloningId === wf._id ? (
-                                  <Loader2 className="size-3 animate-spin text-muted-foreground" />
-                                ) : (
-                                  <Copy className="size-3 text-muted-foreground" />
-                                )}
-                              </Button>
-                            </div>
-                          </div>
-                        ))
-                      )}
+                          ))
+                        )}
+                      </div>
                     </div>
                   </div>
                 </Card>
@@ -344,16 +341,14 @@ function DashboardPageInner() {
               ))}
             </div>
           </div>
-        </PageContainer>
-      </main>
-    </div>
+    </>
   );
 }
 
 export default function DashboardPage() {
   return (
-    <AuthGuard>
+    <AuthenticatedLayout>
       <DashboardPageInner />
-    </AuthGuard>
+    </AuthenticatedLayout>
   );
 }
