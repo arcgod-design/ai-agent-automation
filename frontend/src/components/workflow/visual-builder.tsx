@@ -8,6 +8,7 @@ import ReactFlow, {
   useNodesState,
   applyNodeChanges,
   applyEdgeChanges,
+  useReactFlow,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
@@ -303,6 +304,7 @@ export default function VisualBuilder({
   nodeDefinitions?: NodeDefinition[];
 }) {
   usePerformanceMonitor('VisualBuilder');
+  const { screenToFlowPosition } = useReactFlow();
   const { id: workflowId } = useParams<{ id: string }>();
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [replayNodeId, setReplayNodeId] = useState<string>('');
@@ -939,8 +941,8 @@ export default function VisualBuilder({
         nodeDefinitions={nodeDefinitions}
         onSelectNode={(nodeType) => {
           // Determine placement: relative to last selected node, or center of view
-          let placementX = Math.random() * 200 + 150;
-          let placementY = Math.random() * 200 + 150;
+          let placementX = 0;
+          let placementY = 0;
 
           if (selectedNode && selectedNode.position) {
             placementX = selectedNode.position.x + 280; // place to the right
@@ -950,6 +952,21 @@ export default function VisualBuilder({
             const lastNode = nodes[nodes.length - 1];
             placementX = lastNode.position.x + 280;
             placementY = lastNode.position.y;
+          } else {
+            // Place at the center of the React Flow viewport
+            const flowWrapper = document.querySelector('.react-flow');
+            if (flowWrapper) {
+              const rect = flowWrapper.getBoundingClientRect();
+              const flowCenter = screenToFlowPosition({
+                x: rect.left + rect.width / 2,
+                y: rect.top + rect.height / 2,
+              });
+              placementX = flowCenter.x - 120; // Offset half node width (240px)
+              placementY = flowCenter.y - 40;  // Offset approximate half height
+            } else {
+              placementX = 250;
+              placementY = 250;
+            }
           }
 
           const id = generateNodeId(nodeType.toLowerCase());

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { validateGraph } from '@/utils/graphValidation';
 import { useParams, useRouter } from 'next/navigation';
@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import VisualBuilder from '@/components/workflow/visual-builder';
+import { ReactFlowProvider } from 'reactflow';
 import { Textarea } from '@/components/ui/textarea';
 import { FieldRenderer } from '@/components/workflow/field-renderer';
 import { NodeDefinition } from '@/types/workflow';
@@ -717,17 +718,19 @@ export default function WorkflowBuilderPage() {
             </div>
 
             {builderMode === 'visual' && (
-              <VisualBuilder
-                steps={steps}
-                setSteps={setSteps}
-                edges={edges}
-                onEdgesChange={(updatedEdges) => {
-                  setEdges(updatedEdges);
-                }}
-                onSave={saveWorkflow}
-                invalidNodeIds={invalidNodeIds}
-                nodeDefinitions={nodeDefinitions}
-              />
+              <ReactFlowProvider>
+                <VisualBuilder
+                  steps={steps}
+                  setSteps={setSteps}
+                  edges={edges}
+                  onEdgesChange={(updatedEdges) => {
+                    setEdges(updatedEdges);
+                  }}
+                  onSave={saveWorkflow}
+                  invalidNodeIds={invalidNodeIds}
+                  nodeDefinitions={nodeDefinitions}
+                />
+              </ReactFlowProvider>
             )}
 
             {builderMode === 'list' && (
