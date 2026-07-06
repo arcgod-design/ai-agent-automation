@@ -22,7 +22,12 @@ async function createTeam(req, res) {
       metadata: { a2aSecret }
     });
 
-    return res.status(201).json({ ok: true, team });
+    const teamResponse = team.toObject();
+    if (teamResponse.metadata) {
+      delete teamResponse.metadata.a2aSecret;
+    }
+
+    return res.status(201).json({ ok: true, team: teamResponse, generatedSecret: a2aSecret });
   } catch (err) {
     return res.status(500).json({ ok: false, error: "server_error" });
   }
@@ -68,7 +73,7 @@ async function getSessionLogs(req, res) {
     const session = await AgentSession.findOne({ _id: sessionId, userId: req.user._id });
     if (!session) return res.status(404).json({ ok: false, error: "session_not_found" });
 
-    const logs = await MessageLog.find({ sessionId }).sort({ createdAt: -1 });
+    const logs = await MessageLog.find({ sessionId }).sort({ createdAt: 1 });
     
     return res.json({ ok: true, logs });
   } catch (err) {
