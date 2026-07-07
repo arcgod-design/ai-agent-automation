@@ -5,7 +5,6 @@ const helmet = require('helmet');
 // to ensure the API remains accessible to the frontend.
 const helmetMiddleware = helmet({
   crossOriginEmbedderPolicy: false,
-  crossOriginResourcePolicy: false, // Fix CORS for frontend
 });
 
 module.exports = helmetMiddleware;
