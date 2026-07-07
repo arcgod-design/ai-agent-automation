@@ -24,11 +24,26 @@ class EventBroker extends EventEmitter {
 
       if (!session || session.status !== 'active' || !team) return;
 
-      const msgCount = await MessageLog.countDocuments({ sessionId: session._id });
+      const lastExternalMsg = await MessageLog.findOne({ 
+        sessionId: session._id, 
+        'from.type': 'external' 
+      }).sort({ createdAt: -1 });
+
+      const deadlockQuery = { 
+        sessionId: session._id, 
+        'from.type': 'internal' 
+      };
+
+      if (lastExternalMsg) {
+        deadlockQuery.createdAt = { $gt: lastExternalMsg.createdAt };
+      }
+
+      const msgCount = await MessageLog.countDocuments(deadlockQuery);
+
       if (msgCount > this.MAX_HOPS) {
         session.status = 'failed';
         session.errorLog = session.errorLog || [];
-        session.errorLog.push({ message: 'Max message hops exceeded (Deadlock shield activated)' });
+        session.errorLog.push({ message: 'Max consecutive internal hops exceeded (Deadlock shield activated)' });
         await session.save();
         return;
       }
@@ -42,13 +57,14 @@ class EventBroker extends EventEmitter {
         }
         targetAgents = targetAgents.filter(a => a.name !== msg.from.id && String(a._id) !== msg.from.id);
 
-        for (const agent of targetAgents) {
-          this.executeAgent(agent, session, team, msg.content);
-        }
+        const executionPromises = targetAgents.map(agent => 
+          this.executeAgent(agent, session, team, msg.content)
+        );
+        await Promise.allSettled(executionPromises);
       } else if (msg.to.type === 'external') {
         const extAgent = team.externalAgents.find(a => a.name === msg.to.id);
         if (extAgent && extAgent.webhookUrl) {
-          await fetch(extAgent.webhookUrl, {
+          const response = await fetch(extAgent.webhookUrl, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -56,6 +72,10 @@ class EventBroker extends EventEmitter {
             },
             body: JSON.stringify(msg)
           });
+
+          if (!response.ok) {
+            throw new Error(`Webhook delivery failed. Status: ${response.status}`);
+          }
         }
       }
     } catch (err) {
@@ -103,6 +123,10 @@ CRITICAL RULE: You are ${agent.name}. NEVER set "to.id" to your own name. If you
 
       let rawText = llmRes.text.trim().replace(/^```json\n?/, '').replace(/^```\n?/, '').replace(/\n?```$/, '');
       const parsedOutput = JSON.parse(rawText.trim());
+
+      if (!parsedOutput || typeof parsedOutput !== 'object' || !parsedOutput.to || !parsedOutput.content) {
+        throw new Error('Invalid LLM output: Missing "to" or "content" fields.');
+      }
 
       try {
         await storeMemory(agent, JSON.stringify({
