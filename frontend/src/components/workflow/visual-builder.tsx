@@ -92,11 +92,20 @@ function computeNodes(
   return steps.map((step, index) => {
     const hasError = invalidNodeIds.has(step.id);
 
+    const nodeDef = nodeDefinitions?.find((def) => def.type === step.type);
+
     return {
       id: step.id,
       type: 'premium',
       position: step.position || { x: index * 320, y: 120 },
-      data: {},
+      data: {
+        id: step.id,
+        label: step.name || step.type,
+        type: step.type,
+        hasError,
+        nodeDef,
+        step,
+      },
     };
   });
 }
@@ -149,6 +158,8 @@ export default function VisualBuilder({
   const futureRef = useRef<{ steps: WorkflowNode[]; edges: WorkflowEdge[] }[]>([]);
   const [documents, setDocuments] = useState<WorkflowDocument[]>([]);
   const [mcpTools, setMcpTools] = useState<McpTool[]>([]);
+  const [flowEdges, setFlowEdges] = useState<Edge[]>([]);
+  const [agents, setAgents] = useState<WorkflowAgent[]>([]);
   const selectedStep = steps.find((s) => s.id === selectedNode?.id);
   const selectedMcpTool = mcpTools.find(
     (tool) => tool.serverId === selectedStep?.serverId && tool.name === selectedStep?.toolName
@@ -159,7 +170,7 @@ export default function VisualBuilder({
   // Initialize lastPushedEdgesRef with initial edges
   useEffect(() => {
     lastPushedEdgesRef.current = edges || [];
-  }, []);
+  }, [edges]);
 
   const pushEdgesToParent = useCallback(
     (nextEdges: WorkflowEdge[]) => {
@@ -231,7 +242,7 @@ export default function VisualBuilder({
       nodeDefinitions,
       agents
     );
-  }, [steps, flowEdges, invalidNodeIds, agents]);
+  }, [steps, flowEdges, invalidNodeIds, nodeDefinitions]);
 
   const [nodes, setNodes, _onNodesChange] = useNodesState(computedNodes);
 
@@ -652,7 +663,7 @@ export default function VisualBuilder({
         },
       ]);
     },
-    [deleteNode, steps, flowEdges, setNodes, setSteps]
+    [setSteps]
   );
 
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -678,7 +689,7 @@ export default function VisualBuilder({
   return (
     <div
       ref={wrapperRef}
-      className="flex flex-col flex-1 w-full h-full min-h-[600px] relative overflow-hidden bg-background"
+      className="flex flex-col flex-1 w-full h-[calc(100vh-220px)] min-h-[600px] relative overflow-hidden bg-background border rounded-lg"
     >
       <BuilderToolbar nodeDefinitions={nodeDefinitions || []} onAddNode={addNode} />
 
