@@ -167,21 +167,32 @@ export default function VisualBuilder({
 
   const lastPushedEdgesRef = useRef<WorkflowEdge[]>([]);
 
-  // Initialize lastPushedEdgesRef with initial edges
-  useEffect(() => {
-    lastPushedEdgesRef.current = edges || [];
-  }, [edges]);
-
   const pushEdgesToParent = useCallback(
     (nextEdges: WorkflowEdge[]) => {
-      const serializedEdges: WorkflowEdge[] = nextEdges.map((e) => ({
-        id: e.id,
-        source: e.source,
-        target: e.target,
-        condition:
-          (e as any).condition || ((e as any).data?.condition as 'true' | 'false' | undefined),
-        caseValue: (e as any).caseValue || ((e as any).data?.caseValue as string | undefined),
-      }));
+      const serializedEdges: WorkflowEdge[] = nextEdges.map((e) => {
+        const sourceHandle = (e as any).sourceHandle;
+        let condition =
+          (e as any).condition || ((e as any).data?.condition as 'true' | 'false' | undefined);
+        let caseValue = (e as any).caseValue || ((e as any).data?.caseValue as string | undefined);
+
+        if (!condition && !caseValue && sourceHandle) {
+          if (sourceHandle === 'true' || sourceHandle === 'false') {
+            condition = sourceHandle;
+          } else {
+            caseValue = sourceHandle;
+          }
+        }
+
+        return {
+          id: e.id,
+          source: e.source,
+          target: e.target,
+          condition,
+          caseValue,
+          sourceHandle,
+          targetHandle: (e as any).targetHandle,
+        } as any;
+      });
       lastPushedEdgesRef.current = serializedEdges;
       onEdgesChange(serializedEdges);
     },
