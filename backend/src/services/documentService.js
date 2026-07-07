@@ -1,5 +1,9 @@
 const Document = require('../models/document.model');
+const DocumentChunk = require("../models/documentChunk.model");
+
+const { runEmbedding } = require("../agents/embeddingAdapter");
 const retrievalManager = require("../retrieval");
+const documentAnalyzer = require("../retrieval/analyzers/DocumentAnalyzer");
 
 const STALE_PROCESSING_THRESHOLD_MS = 10 * 60 * 1000;
 
@@ -39,12 +43,20 @@ async function processDocument(agent, document, text) {
     });
 
     const chunks = chunkText(text);
+    // Analyze document structure and metadata for future retrieval strategy selection.
+    const analysis = documentAnalyzer.analyze(document,text,chunks);
 
-    await Document.findByIdAndUpdate(document._id, {
-      processingStep: 'Embedding chunks',
-      processedChunks: 0,
-      totalChunks: chunks.length,
-    });
+    await Document.findByIdAndUpdate(
+      document._id,
+      {
+        $set: {
+          processingStep: "Embedding chunks",
+          processedChunks: 0,
+          totalChunks: chunks.length,
+          "metadata.analysis": analysis,
+        },
+      }
+    );
 
     const records = [];
 
