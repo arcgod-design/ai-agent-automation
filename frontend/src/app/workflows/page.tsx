@@ -252,9 +252,7 @@ const HorizontalWorkflowCard = memo(
         <Card className="flex flex-col md:flex-row p-6 gap-6 bg-card hover:bg-accent/5 transition-colors overflow-hidden border-border/50">
           {/* Left Area (Description Block) */}
           <div className="relative w-full md:w-[320px] bg-muted/20 rounded-lg overflow-hidden shrink-0 flex flex-col justify-between border border-border/50 p-5">
-            {/* Abstract gradient pattern */}
-            <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-purple-500/5 to-transparent"></div>
-            <div className="absolute inset-0 opacity-20 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/40 via-transparent to-transparent"></div>
+            {/* Abstract gradient pattern removed */}
 
             <p className="text-[13px] text-muted-foreground line-clamp-4 leading-relaxed relative z-10">
               {workflow.description || 'No description provided.'}

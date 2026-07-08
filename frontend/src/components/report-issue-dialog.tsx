@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Bug, LifeBuoy } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { motion, AnimatePresence } from 'framer-motion';
+import { cn } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,6 +34,7 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 type IssueFormValues = {
   type: "bug" | "feature" | "other";
@@ -151,30 +153,54 @@ OS: ${os}
     setOpen(false);
   }
 
+  const triggerContent = (
+    <button
+      className={cn(
+        "group relative flex items-center gap-3 rounded-xl px-2 py-2 text-sm font-medium transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-primary w-full",
+        "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground border border-transparent"
+      )}
+      onClick={() => setOpen(true)}
+    >
+      <div className={cn(
+        "flex items-center justify-center size-7 rounded-lg shrink-0 transition-colors",
+        "text-sidebar-foreground/70 group-hover:bg-background/50 group-hover:text-sidebar-foreground"
+      )}>
+        <LifeBuoy className="size-4" />
+      </div>
+
+      <AnimatePresence>
+        {!collapsed && (
+          <motion.span
+            initial={{ opacity: 0, x: -6 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -6 }}
+            transition={{ duration: 0.15 }}
+            className="flex-1 whitespace-nowrap text-left"
+          >
+            Report Issues
+          </motion.span>
+        )}
+      </AnimatePresence>
+    </button>
+  );
+
   return (
     <>
-      <button
-        className="group relative flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-sidebar-foreground/60 hover:bg-sidebar-accent/40 hover:text-sidebar-foreground transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-        onClick={() => setOpen(true)}
-      >
-        <LifeBuoy className="size-4 shrink-0 text-sidebar-foreground/60 group-hover:text-sidebar-foreground/90" />
-        <AnimatePresence>
-          {!collapsed && (
-            <motion.span
-              initial={{ opacity: 0, width: 0 }}
-              animate={{ opacity: 1, width: 'auto' }}
-              exit={{ opacity: 0, width: 0 }}
-              transition={{ duration: 0.15 }}
-              className="whitespace-nowrap"
-            >
-              Support
-            </motion.span>
-          )}
-        </AnimatePresence>
-      </button>
+      {collapsed ? (
+        <Tooltip delayDuration={0}>
+          <TooltipTrigger asChild>
+            {triggerContent}
+          </TooltipTrigger>
+          <TooltipContent side="right" sideOffset={14}>
+            Report Issues
+          </TooltipContent>
+        </Tooltip>
+      ) : (
+        triggerContent
+      )}
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Report an Issue</DialogTitle>
             <DialogDescription>

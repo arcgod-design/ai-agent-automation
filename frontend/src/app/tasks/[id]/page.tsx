@@ -394,8 +394,8 @@ export default function TaskDetailPage() {
   const executedSteps = task.stepResults?.length ?? 0;
   const stepResults = task.stepResults ?? [];
   return (
-    <AuthenticatedLayout>
-      <div className="flex flex-col min-h-[calc(100vh-6rem)]">
+    <AuthenticatedLayout layout="panel">
+      <div className="flex flex-col flex-1 min-h-0">
         <div className="flex items-center justify-between mb-6 shrink-0">
           <div className="flex items-center gap-3">
             <Link href={`/workflows/${task.workflowId}`}>

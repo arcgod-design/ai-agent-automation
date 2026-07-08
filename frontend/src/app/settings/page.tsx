@@ -33,6 +33,7 @@ import {
   BookOpen,
   KeyRound,
   Server,
+  XCircle,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -774,7 +775,9 @@ export default function SettingsPage() {
                             </Badge>
                           ) : (
                             <Badge variant="outline" className="text-muted-foreground">
-                              Not Configured ❌
+                              <span className="flex items-center text-destructive">
+                                Not Configured <XCircle className="w-4 h-4 ml-1" />
+                              </span>
                             </Badge>
                           )}
                         </div>
