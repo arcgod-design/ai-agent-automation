@@ -83,7 +83,6 @@ class EventBroker extends EventEmitter {
           }
         }
       } else if (msg.to.id === 'workflow_engine') {
-        // 🌉 PHASE 4: THE WORKFLOW API BRIDGE
         try {
           const { workflowId, input } = msg.content;
           const PORT = process.env.PORT || 5001;
@@ -146,8 +145,6 @@ class EventBroker extends EventEmitter {
       }
 
       finalPrompt += `\n\nINCOMING MESSAGE:\n${JSON.stringify(inputPayload)}`;
-
-      // 🧠 PHASE 4: TOOL DISCOVERY & PROMPT INJECTION
       let toolsPrompt = "";
       if (agent.config?.tools?.allowedWorkflows && Array.isArray(agent.config.tools.allowedWorkflows) && agent.config.tools.allowedWorkflows.length > 0) {
         try {
