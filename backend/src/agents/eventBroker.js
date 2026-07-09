@@ -4,6 +4,7 @@ const AgentTeam = require('../models/agentTeam.model');
 const AgentSession = require('../models/agentSession.model');
 const Agent = require('../models/agent.model');
 const Workflow = require('../models/workflow.model');
+const { receivePublicWorkflowCall } = require('../controllers/workflowApi.public.controller');
 const { runLLM } = require('./llmAdapter');
 const { retrieveMemory, storeMemory } = require('../services/memoryService');
 
@@ -85,24 +86,42 @@ class EventBroker extends EventEmitter {
       } else if (msg.to.id === 'workflow_engine') {
         try {
           const { workflowId, input } = msg.content;
-          const PORT = process.env.PORT || 5001;
-          const wfUrl = `http://localhost:${PORT}/api/workflows/public/${workflowId}`;
 
-          const response = await fetch(wfUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(input || {})
+          const mockReq = {
+            params: { idOrSlug: workflowId },
+            body: input || {},
+            headers: {},
+            query: {}
+          };
+
+          const mockRes = { statusCode: 200 };
+
+          const result = await new Promise((resolve, reject) => {
+            mockRes.status = function(code) {
+              this.statusCode = code;
+              return this;
+            };
+            
+            mockRes.json = function(data) {
+              resolve({
+                ok: this.statusCode >= 200 && this.statusCode < 300,
+                data
+              });
+            };
+            
+            receivePublicWorkflowCall(mockReq, mockRes).catch(reject);
           });
-
-          const resultData = await response.json();
 
           this.emit('INTERNAL_AGENT_MESSAGE', {
             sessionId: session._id,
             teamId: team._id,
             from: { id: 'workflow_engine', type: 'system' },
-            to: { id: msg.from.id, type: 'internal' }, // Return result directly to the agent
+            to: { id: msg.from.id, type: 'internal' },
             type: 'workflow_result',
-            content: { status: response.ok ? 'success' : 'error', data: resultData }
+            content: { 
+              status: result.ok ? 'success' : 'error', 
+              data: result.data 
+            }
           });
         } catch (wfErr) {
           console.error('[Swarm Bridge] Workflow Execution Failed:', wfErr);
