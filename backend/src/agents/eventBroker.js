@@ -3,6 +3,7 @@ const MessageLog = require('../models/messageLog.model');
 const AgentTeam = require('../models/agentTeam.model');
 const AgentSession = require('../models/agentSession.model');
 const Agent = require('../models/agent.model');
+const Workflow = require('../models/workflow.model');
 const { runLLM } = require('./llmAdapter');
 const { retrieveMemory, storeMemory } = require('../services/memoryService');
 
@@ -81,6 +82,40 @@ class EventBroker extends EventEmitter {
             throw new Error(`Webhook delivery failed. Status: ${response.status}`);
           }
         }
+      } else if (msg.to.id === 'workflow_engine') {
+        // 🌉 PHASE 4: THE WORKFLOW API BRIDGE
+        try {
+          const { workflowId, input } = msg.content;
+          const PORT = process.env.PORT || 5001;
+          const wfUrl = `http://localhost:${PORT}/api/workflows/public/${workflowId}`;
+
+          const response = await fetch(wfUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(input || {})
+          });
+
+          const resultData = await response.json();
+
+          this.emit('INTERNAL_AGENT_MESSAGE', {
+            sessionId: session._id,
+            teamId: team._id,
+            from: { id: 'workflow_engine', type: 'system' },
+            to: { id: msg.from.id, type: 'internal' }, // Return result directly to the agent
+            type: 'workflow_result',
+            content: { status: response.ok ? 'success' : 'error', data: resultData }
+          });
+        } catch (wfErr) {
+          console.error('[Swarm Bridge] Workflow Execution Failed:', wfErr);
+          this.emit('INTERNAL_AGENT_MESSAGE', {
+            sessionId: session._id,
+            teamId: team._id,
+            from: { id: 'workflow_engine', type: 'system' },
+            to: { id: msg.from.id, type: 'internal' },
+            type: 'workflow_result',
+            content: { status: 'error', data: wfErr.message }
+          });
+        }
       }
     } catch (err) {
       console.error(err);
@@ -112,16 +147,47 @@ class EventBroker extends EventEmitter {
 
       finalPrompt += `\n\nINCOMING MESSAGE:\n${JSON.stringify(inputPayload)}`;
 
+      // 🧠 PHASE 4: TOOL DISCOVERY & PROMPT INJECTION
+      let toolsPrompt = "";
+      if (agent.config?.tools?.allowedWorkflows && Array.isArray(agent.config.tools.allowedWorkflows) && agent.config.tools.allowedWorkflows.length > 0) {
+        try {
+          const workflows = await Workflow.find({ _id: { $in: agent.config.tools.allowedWorkflows } });
+          if (workflows.length > 0) {
+            toolsPrompt += `\n\n🛠️ YOU HAVE ACCESS TO THE FOLLOWING TOOLS (WORKFLOWS):`;
+            workflows.forEach(wf => {
+              toolsPrompt += `\n- ID: "${String(wf._id)}" | Name: "${wf.name}" | Description: "${wf.description || 'Executes a specific deterministic workflow'}"`;
+            });
+            toolsPrompt += `\n\nTo execute a tool, you must reply EXACTLY with this JSON format and nothing else:
+{
+  "to": {"id": "workflow_engine", "type": "system"},
+  "type": "workflow_call",
+  "content": {
+    "workflowId": "<THE_WORKFLOW_ID>",
+    "input": { "your_key": "your_value" }
+  }
+}`;
+          }
+        } catch (err) {
+          console.error(`[Swarm] Error loading tools for ${agent.name}:`, err);
+        }
+      }
+
       finalPrompt += `\n\nCRITICAL OUTPUT FORMAT:
-You must respond ONLY with a raw JSON object. Do not include markdown fences. Use this exact schema:
+You must respond ONLY with a raw JSON object. Do not include markdown fences.
+If you are answering the group or providing a final result, use this exact schema:
 {
   "to": {"id": "broadcast", "type": "internal"},
   "type": "agent_result",
   "content": {
-    "result": "your calculated answer"
+    "result": "your answer or analysis"
   }
-}
-CRITICAL RULE: You are ${agent.name}. NEVER set "to.id" to your own name. If you are answering a general question, always set "to.id" to "broadcast".`;
+}`;
+
+      if (toolsPrompt) {
+        finalPrompt += toolsPrompt;
+      }
+
+      finalPrompt += `\n\nCRITICAL RULE: You are ${agent.name}. NEVER set "to.id" to your own name. You must either broadcast to the group or call the workflow_engine.`;
 
       const llmRes = await runLLM(finalPrompt, {
         provider: agent.config?.provider,
