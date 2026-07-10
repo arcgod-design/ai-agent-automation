@@ -23,7 +23,7 @@ connectDB().then(async () => {
     console.error("Stale document processing cleanup failed:", err);
   }
 
-  app.listen(PORT, "0.0.0.0", async () => {
+  app.listen(PORT, async () => {
     console.log(`🚀 Server running on http://localhost:${PORT}`);
 
     try {
@@ -38,6 +38,13 @@ connectDB().then(async () => {
       console.log("📡 Telemetry service started");
     } catch (err) {
       console.error("Telemetry failed to start:", err);
+    }
+    
+    try {
+      require('./src/agents/eventBroker');
+      console.log("🧠 Event Broker Engine listening for swarm messages");
+    } catch (err) {
+      console.error("Event Broker failed to start:", err);
     }
   });
 });

@@ -122,11 +122,8 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
       const response = await originalFetch(input, init);
       if (response.status === 401) {
-        const urlStr = typeof input === 'string'
-          ? input
-          : input instanceof URL
-            ? input.toString()
-            : input.url;
+        const urlStr =
+          typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
         // Ignore token errors for login or registration requests to allow inline form error handling
         if (!urlStr.includes('/auth/login') && !urlStr.includes('/auth/register')) {
           logout();
