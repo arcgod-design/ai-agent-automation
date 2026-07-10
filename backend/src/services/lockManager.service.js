@@ -90,15 +90,15 @@ class LockManager {
    * A semaphore allows at most `limit` concurrent holders. When the count
    * would exceed `limit`, acquisition fails without blocking.
    *
-   * Semaphore state is stored in a single Lock document per resourceKey using
-   * an atomic $inc + conditional update to prevent races across workers:
+   * Semaphore state is stored in a single Lock document per resourceKey.
+   * Acquisition is handled in three distinct atomic steps to avoid the false-
+   * negative that occurs when an expired document still has semaphoreCount at
+   * the limit (TTL monitor hasn't cleaned it up yet):
    *
-   *   - If no document exists, one is created with semaphoreCount = 1.
-   *   - If the document exists and semaphoreCount < limit, the count is
-   *     incremented atomically.
-   *   - If semaphoreCount >= limit, the method returns false immediately.
-   *   - expiresAt is refreshed on every successful acquisition so stale
-   *     semaphore documents are also cleaned up by the MongoDB TTL index.
+   *   1. If an EXPIRED document exists, reset it unconditionally (semaphoreCount
+   *      becomes 1) — the old count is irrelevant once the TTL has passed.
+   *   2. If an ACTIVE document exists with semaphoreCount < limit, increment it.
+   *   3. If no document exists at all, create one with semaphoreCount = 1.
    *
    * @param {string} resourceKey - Unique identifier for the shared resource
    * @param {number} limit       - Maximum number of concurrent holders allowed
@@ -107,44 +107,62 @@ class LockManager {
    * @returns {Promise<boolean>} true if a semaphore slot was acquired, false if at capacity
    */
   static async acquireSemaphore(resourceKey, limit, ttlMs, ownerId) {
+    if (limit < 1) {
+      return false;
+    }
+
     const now = new Date();
     const expiresAt = new Date(now.getTime() + ttlMs);
+    const semKey = `sem:${resourceKey}`;
 
     try {
-      // Atomically increment semaphoreCount only when currently below the limit.
-      // Using a dedicated semaphore lockKey prefix avoids collision with exclusive locks.
-      const semKey = `sem:${resourceKey}`;
-
-      const updated = await Lock.findOneAndUpdate(
+      // Step 1: Reset any expired semaphore document unconditionally.
+      // An expired document's semaphoreCount is no longer meaningful — treating
+      // it as "at limit" would be a false negative, so we reset it to 1 and
+      // take over the slot rather than waiting for the TTL monitor to delete it.
+      const expiredReset = await Lock.findOneAndUpdate(
         {
           lockKey: semKey,
-          semaphoreCount: { $lt: limit }, // Only acquire if under the limit
-          $or: [
-            { expiresAt: { $gt: now } }, // Document is still valid
-            { expiresAt: { $lt: now } }, // Or expired — allow reset
-          ],
+          expiresAt: { $lt: now }, // document is expired
         },
         {
-          $inc: { semaphoreCount: 1 },
           $set: {
             ownerId,
             expiresAt,
             acquiredAt: now,
+            semaphoreCount: 1,
           },
         },
-        { new: true, upsert: false }
+        { new: true }
       );
 
-      if (updated) {
+      if (expiredReset) {
         return true;
       }
 
-      // No existing document — try to create it (semaphoreCount starts at 1).
-      // If the limit is 0, reject immediately before attempting insert.
-      if (limit < 1) {
-        return false;
+      // Step 2: Increment count on an active (non-expired) document only if
+      // there is still a slot available (semaphoreCount < limit).
+      const incremented = await Lock.findOneAndUpdate(
+        {
+          lockKey: semKey,
+          expiresAt: { $gte: now }, // document is still valid
+          semaphoreCount: { $lt: limit },
+        },
+        {
+          $inc: { semaphoreCount: 1 },
+          $set: { ownerId, expiresAt, acquiredAt: now },
+        },
+        { new: true }
+      );
+
+      if (incremented) {
+        return true;
       }
 
+      // Step 3: No document exists at all — create one.
+      // If a concurrent worker beats us here, the unique index on lockKey will
+      // throw a duplicate-key error (11000), which means the semaphore is now
+      // held by that worker. We treat that as "at limit" and return false.
       await Lock.create({
         lockKey: semKey,
         ownerId,
@@ -156,7 +174,7 @@ class LockManager {
       return true;
     } catch (err) {
       if (err.code === 11000) {
-        // Concurrent insert from another worker — the semaphore is now at limit.
+        // Concurrent insert — semaphore is at limit or just became active.
         return false;
       }
       console.error('[LockManager] acquireSemaphore error:', err.message);
