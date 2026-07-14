@@ -31,6 +31,9 @@ connectDB().then(async () => {
     const io = socketUtil.init(server);
     io.on('connection', (socket) => {
       socket.on('join_war_room', (teamId) => {
+        if (!teamId || typeof teamId !== 'string' || teamId.length < 12) {
+          return;
+        }
         socket.join(`war_room_${teamId}`);
       });
     });

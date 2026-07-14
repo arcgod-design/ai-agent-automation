@@ -35,9 +35,14 @@ app.use(helmetMiddleware);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Internal route for the runner to broadcast socket events
+// Internal route for the runner to broadcast socket events securely
 app.post('/api/internal/broadcast', (req, res) => {
   try {
+    const internalToken = req.headers['x-internal-token'];
+    if (!internalToken || internalToken !== (process.env.INTERNAL_AUTH_TOKEN || 'fallback_secret_token')) {
+      return res.status(403).json({ ok: false, error: 'Unauthorized internal broadcast request.' });
+    }
+
     const { room, event, payload } = req.body;
     const socketUtil = require('./utils/socket');
     socketUtil.getIO().to(room).emit(event, payload);
@@ -54,10 +59,15 @@ app.post('/api/agent-teams/:id/run', async (req, res) => {
   try {
     const { input } = req.body;
     const db = mongoose.connection.db;
-    const workflow = await db.collection('workflows').findOne({}, { sort: { _id: -1 } });
+    const team = await db.collection('agentteams').findOne({ _id: new mongoose.Types.ObjectId(req.params.id) });
+    const query = team?.workflowId 
+      ? { _id: new mongoose.Types.ObjectId(team.workflowId) } 
+      : { teamId: new mongoose.Types.ObjectId(req.params.id) };
+      
+    const workflow = await db.collection('workflows').findOne(query, { sort: { _id: -1 } });
 
     if (!workflow) {
-      return res.status(404).json({ error: "No workflows found in database. Please create at least one workflow to test the bridge." });
+      return res.status(404).json({ error: "No matching executable workflow discovered for this specific agent team. Please ensure a workflow is linked to this team." });
     }
 
     const execUrl = `http://localhost:${process.env.PORT || 5001}/api/workflows/${workflow._id}/run`;

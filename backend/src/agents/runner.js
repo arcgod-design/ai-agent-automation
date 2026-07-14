@@ -56,9 +56,13 @@ async function getGlobalWorkerSettings() {
 async function emitProgress(workflowId, payload) {
   try {
     const port = process.env.PORT || 5000;
-    await fetch(`http://localhost:${port}/api/internal/broadcast`, {
+    const backendHost = process.env.BACKEND_INTERNAL_URL || `http://localhost:${port}`;
+    await fetch(`${backendHost}/api/internal/broadcast`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'X-Internal-Token': process.env.INTERNAL_AUTH_TOKEN || 'fallback_secret_token'
+      },
       body: JSON.stringify({
         room: `war_room_${workflowId}`,
         event: 'workflow_status',
@@ -66,7 +70,7 @@ async function emitProgress(workflowId, payload) {
       })
     });
   } catch (err) {
-    // Silently fail to prevent crash
+    // Silently fail if server is unreachable so runner doesn't crash
   }
 }
 
