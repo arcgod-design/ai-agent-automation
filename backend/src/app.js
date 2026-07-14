@@ -35,6 +35,18 @@ app.use(helmetMiddleware);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Internal route for the runner to broadcast socket events
+app.post('/api/internal/broadcast', (req, res) => {
+  try {
+    const { room, event, payload } = req.body;
+    const socketUtil = require('./utils/socket');
+    socketUtil.getIO().to(room).emit(event, payload);
+    res.json({ ok: true });
+  } catch (err) {
+    res.json({ ok: false, error: err.message });
+  }
+});
+
 // <---------------------Temporary--------------------------->
 const mongoose = require('mongoose');
 
@@ -42,11 +54,12 @@ app.post('/api/agent-teams/:id/run', async (req, res) => {
   try {
     const { input } = req.body;
     const db = mongoose.connection.db;
-    const workflow = await db.collection('workflows').findOne({ _id: new mongoose.Types.ObjectId(req.params.id) });
+    const workflow = await db.collection('workflows').findOne({}, { sort: { _id: -1 } });
 
     if (!workflow) {
-      return res.status(404).json({ error: "Workflow 'A2A testing' not found in database." });
+      return res.status(404).json({ error: "No workflows found in database. Please create at least one workflow to test the bridge." });
     }
+
     const execUrl = `http://localhost:${process.env.PORT || 5001}/api/workflows/${workflow._id}/run`;
     const execRes = await fetch(execUrl, {
       method: 'POST',
@@ -61,28 +74,7 @@ app.post('/api/agent-teams/:id/run', async (req, res) => {
       const errorBody = await execRes.text();
       throw new Error(`Runner failed with Status ${execRes.status}: ${errorBody}`);
     }
-    res.json({
-      ok: true,
-      messages: [
-        {
-          id: Date.now().toString(),
-          role: 'agent',
-          agentName: 'Support Bot',
-          content: `Received your prompt: "${input}". Coordinating with Tech Bot now.`
-        },
-        {
-          id: (Date.now() + 1).toString(),
-          role: 'agent',
-          agentName: 'Tech Bot',
-          content: 'System failure confirmed. Workflow triggered successfully.',
-          workflowExecution: {
-            workflowId: workflow._id.toString(),
-            workflowName: 'A2A testing',
-            status: 'success'
-          }
-        }
-      ]
-    });
+    res.json({ ok: true, workflowId: workflow._id.toString() });
   } catch (error) {
     console.error("❌ SWARM EXECUTION ERROR:", error.message);
     res.status(500).json({ error: error.message });

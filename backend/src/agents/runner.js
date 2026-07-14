@@ -53,6 +53,23 @@ async function getGlobalWorkerSettings() {
   }
 }
 
+async function emitProgress(workflowId, payload) {
+  try {
+    const port = process.env.PORT || 5000;
+    await fetch(`http://localhost:${port}/api/internal/broadcast`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        room: `war_room_${workflowId}`,
+        event: 'workflow_status',
+        payload
+      })
+    });
+  } catch (err) {
+    // Silently fail to prevent crash
+  }
+}
+
 /* -------------------------
    Worker loop
 ------------------------- */
@@ -85,6 +102,14 @@ async function runWorkerLoop() {
         status: 'running',
         startedAt: new Date(),
       });
+
+      if (task.workflowId) {
+        await emitProgress(task.workflowId, {
+          type: 'start',
+          message: 'Agent workflow execution initiated...',
+          taskId: task._id
+        });
+      }
 
       const traceId = crypto.randomUUID();
 
@@ -440,6 +465,11 @@ async function runWorkerLoop() {
               writeLog(`Executing Step: ${stepNode.name} (${stepNode.type})`, 'info', {
                 workerId: WORKER_ID, taskId: task._id, workflowId: task.workflowId, traceId: branchContext.traceId
               });
+              await emitProgress(task.workflowId, {
+                type: 'step_start',
+                stepName: stepNode.name,
+                message: `Executing step: ${stepNode.name}...`,
+              });
               result = await executeStep(stepNode, branchContext, agent);
               
               if (!result) {
@@ -513,6 +543,15 @@ async function runWorkerLoop() {
       }
 
       await completeTask(task._id, { success });
+      
+      if (task.workflowId) {
+        await emitProgress(task.workflowId, {
+          type: 'complete',
+          success: success,
+          message: `Workflow completed with status: ${success ? 'Success' : 'Failed'}`,
+          taskId: task._id
+        });
+      }
 
       const durationMs = task.startedAt ? Date.now() - new Date(task.startedAt).getTime() : 0;
 

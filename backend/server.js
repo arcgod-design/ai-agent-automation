@@ -23,8 +23,17 @@ connectDB().then(async () => {
     console.error("Stale document processing cleanup failed:", err);
   }
 
-  app.listen(PORT, async () => {
+  const socketUtil = require('./src/utils/socket');
+  
+  const server = app.listen(PORT, async () => {
     console.log(`🚀 Server running on http://localhost:${PORT}`);
+
+    const io = socketUtil.init(server);
+    io.on('connection', (socket) => {
+      socket.on('join_war_room', (teamId) => {
+        socket.join(`war_room_${teamId}`);
+      });
+    });
 
     try {
       await schedulerService.start();

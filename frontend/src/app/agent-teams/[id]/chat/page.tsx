@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Bot, Zap, Send, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { io, Socket } from "socket.io-client";
 
 interface Message {
   id: string;
@@ -28,12 +29,46 @@ export default function WarRoomChat() {
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [messages, isTyping]);
+
+  useEffect(() => {
+    const socketUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+    const socket = io(socketUrl);
+    socketRef.current = socket;
+
+    socket.on("connect", () => {
+      socket.emit("join_war_room", teamId);
+    });
+    socket.on("workflow_status", (data: any) => {
+      setIsTyping(false);
+
+      const newMsg: Message = {
+        id: Date.now().toString() + Math.random().toString(),
+        role: 'agent',
+        agentName: data.stepName || 'System Orchestrator',
+        content: data.message,
+      };
+      if (data.type === 'complete') {
+        newMsg.workflowExecution = {
+          workflowId: data.taskId || 'unknown',
+          workflowName: 'Agent Workflow', 
+          status: data.success ? 'success' : 'failed'
+        };
+      }
+
+      setMessages((prev) => [...prev, newMsg]);
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [teamId]);
 
   const handleSend = async () => {
     if (!input.trim()) return;
@@ -49,13 +84,13 @@ export default function WarRoomChat() {
     setIsTyping(true);
 
     try {
-      const res = await runAgentTeam(teamId, userMsg.content);
-      if (res.ok && res.messages) {
-        setMessages((prev) => [...prev, ...res.messages]);
+      const res: any = await runAgentTeam(teamId, userMsg.content);
+      
+      if (res && res.workflowId) {
+        socketRef.current?.emit("join_war_room", res.workflowId);
       }
     } catch (error) {
       console.error(error);
-    } finally {
       setIsTyping(false);
     }
   };
@@ -107,10 +142,10 @@ export default function WarRoomChat() {
                 </div>
                 <div className="flex flex-col">
                   <span className="text-sm font-semibold text-foreground">
-                    ⚡ {msg.agentName} successfully executed '{msg.workflowExecution.workflowName}'
+                    ⚡ Workflow Execution Complete
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    Phase 4 Bridge Triggered • Status: {msg.workflowExecution.status}
+                    Trace ID: {msg.workflowExecution.workflowId} • Status: {msg.workflowExecution.status}
                   </span>
                 </div>
               </div>
