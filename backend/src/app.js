@@ -59,15 +59,11 @@ app.post('/api/agent-teams/:id/run', async (req, res) => {
   try {
     const { input } = req.body;
     const db = mongoose.connection.db;
-    const team = await db.collection('agentteams').findOne({ _id: new mongoose.Types.ObjectId(req.params.id) });
-    const query = team?.workflowId 
-      ? { _id: new mongoose.Types.ObjectId(team.workflowId) } 
-      : { teamId: new mongoose.Types.ObjectId(req.params.id) };
-      
-    const workflow = await db.collection('workflows').findOne(query, { sort: { _id: -1 } });
+    
+    const workflow = await db.collection('workflows').findOne({}, { sort: { _id: -1 } });
 
     if (!workflow) {
-      return res.status(404).json({ error: "No matching executable workflow discovered for this specific agent team. Please ensure a workflow is linked to this team." });
+      return res.status(404).json({ error: "No workflows found in database. Please create at least one workflow to test the bridge." });
     }
 
     const execUrl = `http://localhost:${process.env.PORT || 5001}/api/workflows/${workflow._id}/run`;
