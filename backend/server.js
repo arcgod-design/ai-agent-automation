@@ -40,7 +40,7 @@ connectDB().then(async () => {
           
           if (teamId && typeof teamId === 'string' && teamId.length >= 12) {
             socket.join(`war_room_${teamId}`);
-            console.log(`✅ Socket successfully authenticated and joined: war_room_${teamId}`);
+            console.log('✅ Socket successfully authenticated and joined a war room.');
           }
         } catch (error) {
           console.error("❌ Socket join rejected:", error.message);
