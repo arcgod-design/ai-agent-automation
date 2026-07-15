@@ -30,20 +30,47 @@ connectDB().then(async () => {
 
     const io = socketUtil.init(server);
     io.on('connection', (socket) => {
-      socket.on('join_war_room', (data) => {
+      socket.on('join_war_room', async (data) => {
         try {
           const { teamId, token } = data;
-          if (!token) throw new Error("No token provided in socket request.");
-          
+          if (!token) throw new Error();
+
           const jwt = require('jsonwebtoken');
-          jwt.verify(token, process.env.JWT_SECRET);
+          const decoded = jwt.verify(token, process.env.JWT_SECRET);
+          const userId = decoded.id || decoded.userId || decoded.sub;
           
+          if (!userId) throw new Error();
+
+          const mongoose = require('mongoose');
+          const db = mongoose.connection.db;
+
+          let authQuery = [{ userId: userId }, { ownerId: userId }];
+          
+          if (mongoose.Types.ObjectId.isValid(userId)) {
+            authQuery.push({ userId: new mongoose.Types.ObjectId(userId) });
+            authQuery.push({ ownerId: new mongoose.Types.ObjectId(userId) });
+          }
+
           if (teamId && typeof teamId === 'string' && teamId.length >= 12) {
+            const hasWorkflowAccess = await db.collection('workflows').findOne({
+              _id: new mongoose.Types.ObjectId(teamId),
+              $or: authQuery
+            });
+
+            const hasTeamAccess = await db.collection('agentteams').findOne({
+              _id: new mongoose.Types.ObjectId(teamId),
+              $or: authQuery
+            });
+
+            if (!hasWorkflowAccess && !hasTeamAccess) throw new Error();
+
             socket.join(`war_room_${teamId}`);
-            console.log('✅ Socket successfully authenticated and joined a war room.');
+
+            const EventEmitter = require('events');
+            global.socketSync = global.socketSync || new EventEmitter();
+            global.socketSync.emit(`joined_${teamId}`);
           }
         } catch (error) {
-          console.error("❌ Socket join rejected:", error.message);
           socket.disconnect();
         }
       });
