@@ -1,6 +1,5 @@
 'use client';
 
-import { useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -29,7 +28,6 @@ import {
   Cell,
   PieChart,
   Pie,
-  Legend,
 } from 'recharts';
 
 import { AuthenticatedLayout } from '@/components/layout/authenticated-layout';
