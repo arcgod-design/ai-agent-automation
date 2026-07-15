@@ -55,13 +55,17 @@ async function getGlobalWorkerSettings() {
 
 async function emitProgress(workflowId, payload) {
   try {
-    const port = process.env.PORT || 5000;
+    if (!process.env.INTERNAL_AUTH_TOKEN) {
+      throw new Error('INTERNAL_AUTH_TOKEN not configured');
+    }
+    const port = process.env.PORT || 5001; 
     const backendHost = process.env.BACKEND_INTERNAL_URL || `http://localhost:${port}`;
-    await fetch(`${backendHost}/api/internal/broadcast`, {
+    
+    const res = await fetch(`${backendHost}/api/internal/broadcast`, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
-        'X-Internal-Token': process.env.INTERNAL_AUTH_TOKEN || 'fallback_secret_token'
+        'X-Internal-Token': process.env.INTERNAL_AUTH_TOKEN
       },
       body: JSON.stringify({
         room: `war_room_${workflowId}`,
@@ -69,8 +73,12 @@ async function emitProgress(workflowId, payload) {
         payload
       })
     });
+
+    if (!res.ok) {
+      console.error(`❌ Broadcast failed: Server responded with status ${res.status}`);
+    }
   } catch (err) {
-    // Silently fail if server is unreachable so runner doesn't crash
+    console.error("❌ Runner socket broadcast error:", err.message);
   }
 }
 

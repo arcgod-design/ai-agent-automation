@@ -38,11 +38,13 @@ app.use(express.urlencoded({ extended: true }));
 // Internal route for the runner to broadcast socket events securely
 app.post('/api/internal/broadcast', (req, res) => {
   try {
+    if (!process.env.INTERNAL_AUTH_TOKEN) {
+      return res.status(500).json({ ok: false, error: 'Server configuration error.' });
+    }
     const internalToken = req.headers['x-internal-token'];
-    if (!internalToken || internalToken !== (process.env.INTERNAL_AUTH_TOKEN || 'fallback_secret_token')) {
+    if (!internalToken || internalToken !== process.env.INTERNAL_AUTH_TOKEN) {
       return res.status(403).json({ ok: false, error: 'Unauthorized internal broadcast request.' });
     }
-
     const { room, event, payload } = req.body;
     const socketUtil = require('./utils/socket');
     socketUtil.getIO().to(room).emit(event, payload);
@@ -52,41 +54,38 @@ app.post('/api/internal/broadcast', (req, res) => {
   }
 });
 
-// <---------------------Temporary--------------------------->
 const mongoose = require('mongoose');
 
 app.post('/api/agent-teams/:id/run', async (req, res) => {
   try {
     const { input } = req.body;
     const db = mongoose.connection.db;
-    
     const workflow = await db.collection('workflows').findOne({}, { sort: { _id: -1 } });
 
     if (!workflow) {
-      return res.status(404).json({ error: "No workflows found in database. Please create at least one workflow to test the bridge." });
+      return res.status(404).json({ error: "No workflows found in database." });
     }
 
-    const execUrl = `http://localhost:${process.env.PORT || 5001}/api/workflows/${workflow._id}/run`;
-    const execRes = await fetch(execUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': req.headers.authorization || ''
-      },
-      body: JSON.stringify({ triggerSource: 'war_room', prompt: input })
-    });
-
-    if (!execRes.ok) {
-      const errorBody = await execRes.text();
-      throw new Error(`Runner failed with Status ${execRes.status}: ${errorBody}`);
-    }
     res.json({ ok: true, workflowId: workflow._id.toString() });
+
+    setTimeout(async () => {
+      try {
+        const execUrl = `http://localhost:${process.env.PORT || 5001}/api/workflows/${workflow._id}/run`;
+        await fetch(execUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': req.headers.authorization || ''
+          },
+          body: JSON.stringify({ triggerSource: 'war_room', prompt: input })
+        });
+      } catch (err) {}
+    }, 500);
+
   } catch (error) {
-    console.error("❌ SWARM EXECUTION ERROR:", error.message);
     res.status(500).json({ error: error.message });
   }
 });
-// <---------------------Temporary--------------------------->
 
 // apply rate limiting middleware to routes
 app.use('/api', globalLimiter);

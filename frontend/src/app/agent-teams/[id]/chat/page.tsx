@@ -43,7 +43,12 @@ export default function WarRoomChat() {
     socketRef.current = socket;
 
     socket.on("connect", () => {
-      socket.emit("join_war_room", teamId);
+      const token = localStorage.getItem('token') || localStorage.getItem('accessToken') || localStorage.getItem('jwt');
+      if (token) {
+        socket.emit("join_war_room", { teamId, token });
+      } else {
+        console.error("🚨 AUTH ERROR on load: Missing token.");
+      }
     });
     socket.on("workflow_status", (data: any) => {
       setIsTyping(false);
@@ -87,7 +92,14 @@ export default function WarRoomChat() {
       const res: any = await runAgentTeam(teamId, userMsg.content);
       
       if (res && res.workflowId) {
-        socketRef.current?.emit("join_war_room", res.workflowId);
+        const token = localStorage.getItem('token') || localStorage.getItem('accessToken') || localStorage.getItem('jwt');
+        
+        if (!token) {
+          console.error("🚨 AUTH ERROR: Could not find your login token in localStorage. The socket room will reject the connection.");
+        } else {
+          console.log("✅ Token found, sending to socket server...");
+          socketRef.current?.emit("join_war_room", { teamId: res.workflowId, token });
+        }
       }
     } catch (error) {
       console.error(error);

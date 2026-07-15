@@ -30,11 +30,22 @@ connectDB().then(async () => {
 
     const io = socketUtil.init(server);
     io.on('connection', (socket) => {
-      socket.on('join_war_room', (teamId) => {
-        if (!teamId || typeof teamId !== 'string' || teamId.length < 12) {
-          return;
+      socket.on('join_war_room', (data) => {
+        try {
+          const { teamId, token } = data;
+          if (!token) throw new Error("No token provided in socket request.");
+          
+          const jwt = require('jsonwebtoken');
+          jwt.verify(token, process.env.JWT_SECRET);
+          
+          if (teamId && typeof teamId === 'string' && teamId.length >= 12) {
+            socket.join(`war_room_${teamId}`);
+            console.log(`✅ Socket successfully authenticated and joined: war_room_${teamId}`);
+          }
+        } catch (error) {
+          console.error("❌ Socket join rejected:", error.message);
+          socket.disconnect();
         }
-        socket.join(`war_room_${teamId}`);
       });
     });
 
