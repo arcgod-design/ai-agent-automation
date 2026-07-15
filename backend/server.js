@@ -51,7 +51,7 @@ connectDB().then(async () => {
             authQuery.push({ ownerId: new mongoose.Types.ObjectId(userId) });
           }
 
-          if (teamId && typeof teamId === 'string' && teamId.length >= 12) {
+          if (teamId && typeof teamId === 'string' && mongoose.Types.ObjectId.isValid(teamId)) {
             const hasWorkflowAccess = await db.collection('workflows').findOne({
               _id: new mongoose.Types.ObjectId(teamId),
               $or: authQuery
