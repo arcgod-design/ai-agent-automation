@@ -12,9 +12,8 @@ export interface StepStat {
   stepId: string;
   type: string;
   executions: number;
-  successes: number;
-  failures: number;
   successRate: number;
+  failureCount: number;
   avgDurationMs: number;
   commonErrors: string[];
 }
@@ -22,13 +21,13 @@ export interface StepStat {
 export interface BranchOutcome {
   label: string;
   count: number;
-  percentage: number;
+  pct: number;
 }
 
 export interface BranchRouting {
   stepId: string;
   type: string;
-  totalExecutions: number;
+  totalTraversals: number;
   outcomes: BranchOutcome[];
   deadBranches: string[];
   isSkewed: boolean;
@@ -36,15 +35,12 @@ export interface BranchRouting {
 
 export interface SemanticMetrics {
   memory: {
-    retrievalCount: number;
-    totalRetrieved: number;
+    sampleCount: number;
     avgSimilarity: number;
     lowRelevance: boolean;
   };
   rag: {
-    topK: number;
-    totalRetrieved: number;
-    relevantChunks: number;
+    sampleCount: number;
     avgSimilarity: number;
     lowRelevance: boolean;
   };

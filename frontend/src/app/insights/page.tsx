@@ -372,8 +372,7 @@ export default function InsightsSummaryPage() {
                         Semantic Memory
                       </div>
                       <div className="space-y-2 text-sm">
-                        <DataRow label="Retrieval calls" value={data?.semanticMetrics?.memory?.retrievalCount ?? 0} />
-                        <DataRow label="Memories retrieved" value={data?.semanticMetrics?.memory?.totalRetrieved ?? 0} />
+                        <DataRow label="Samples analysed" value={data?.semanticMetrics?.memory?.sampleCount ?? 0} />
                         <DataRow
                           label="Avg similarity"
                           value={data?.semanticMetrics?.memory?.avgSimilarity?.toFixed(3) ?? '—'}
@@ -394,9 +393,7 @@ export default function InsightsSummaryPage() {
                         Document RAG
                       </div>
                       <div className="space-y-2 text-sm">
-                        <DataRow label="Top-K" value={data?.semanticMetrics?.rag?.topK ?? '—'} />
-                        <DataRow label="Chunks retrieved" value={data?.semanticMetrics?.rag?.totalRetrieved ?? 0} />
-                        <DataRow label="Relevant chunks" value={data?.semanticMetrics?.rag?.relevantChunks ?? 0} />
+                        <DataRow label="Samples analysed" value={data?.semanticMetrics?.rag?.sampleCount ?? 0} />
                         <DataRow
                           label="Avg similarity"
                           value={data?.semanticMetrics?.rag?.avgSimilarity?.toFixed(3) ?? '—'}

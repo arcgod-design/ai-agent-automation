@@ -258,7 +258,7 @@ function BranchCard({ branch }: { branch: BranchRouting }) {
   const pieData = branch.outcomes.map((o) => ({
     name: o.label,
     value: o.count,
-    pct: o.percentage,
+    pct: o.pct,
     fill: config[o.label]?.color ?? BRANCH_COLORS[0],
   }));
 
@@ -317,9 +317,9 @@ function BranchCard({ branch }: { branch: BranchRouting }) {
                     style={{ background: BRANCH_COLORS[i % BRANCH_COLORS.length] }} />
                   {o.label}
                 </span>
-                <span className="font-semibold tabular-nums">{o.percentage.toFixed(1)}%</span>
+                <span className="font-semibold tabular-nums">{o.pct.toFixed(1)}%</span>
               </div>
-              <Progress value={o.percentage} className="h-1.5" />
+              <Progress value={o.pct} className="h-1.5" />
             </div>
           ))}
           {branch.deadBranches.length > 0 && (
@@ -329,7 +329,7 @@ function BranchCard({ branch }: { branch: BranchRouting }) {
           )}
         </div>
       </div>
-      <p className="text-xs text-muted-foreground">{branch.totalExecutions} total executions</p>
+      <p className="text-xs text-muted-foreground">{branch.totalTraversals} total traversals</p>
     </Card>
   );
 }
@@ -469,8 +469,7 @@ export default function WorkflowInsightsPage() {
                       <MemoryStick className="size-4 text-violet-500" /> Semantic Memory
                     </div>
                     <div className="space-y-2 text-sm">
-                      <DataRow label="Retrieval calls" value={data?.semanticMetrics?.memory?.retrievalCount ?? 0} />
-                      <DataRow label="Memories retrieved" value={data?.semanticMetrics?.memory?.totalRetrieved ?? 0} />
+                      <DataRow label="Samples analysed" value={data?.semanticMetrics?.memory?.sampleCount ?? 0} />
                       <DataRow
                         label="Avg similarity"
                         value={data?.semanticMetrics?.memory?.avgSimilarity?.toFixed(3) ?? '—'}
@@ -488,9 +487,7 @@ export default function WorkflowInsightsPage() {
                       <Activity className="size-4 text-sky-500" /> Document RAG
                     </div>
                     <div className="space-y-2 text-sm">
-                      <DataRow label="Top-K" value={data?.semanticMetrics?.rag?.topK ?? '—'} />
-                      <DataRow label="Chunks retrieved" value={data?.semanticMetrics?.rag?.totalRetrieved ?? 0} />
-                      <DataRow label="Relevant chunks" value={data?.semanticMetrics?.rag?.relevantChunks ?? 0} />
+                      <DataRow label="Samples analysed" value={data?.semanticMetrics?.rag?.sampleCount ?? 0} />
                       <DataRow
                         label="Avg similarity"
                         value={data?.semanticMetrics?.rag?.avgSimilarity?.toFixed(3) ?? '—'}
