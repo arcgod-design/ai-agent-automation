@@ -53,6 +53,35 @@ async function getGlobalWorkerSettings() {
   }
 }
 
+async function emitProgress(workflowId, payload) {
+  try {
+    if (!process.env.INTERNAL_AUTH_TOKEN) {
+      throw new Error('INTERNAL_AUTH_TOKEN not configured');
+    }
+    const port = process.env.PORT || 5001; 
+    const backendHost = process.env.BACKEND_INTERNAL_URL || `http://localhost:${port}`;
+    
+    const res = await fetch(`${backendHost}/api/internal/broadcast`, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'X-Internal-Token': process.env.INTERNAL_AUTH_TOKEN
+      },
+      body: JSON.stringify({
+        room: `war_room_${workflowId}`,
+        event: 'workflow_status',
+        payload
+      })
+    });
+
+    if (!res.ok) {
+      console.error(`❌ Broadcast failed: Server responded with status ${res.status}`);
+    }
+  } catch (err) {
+    console.error("❌ Runner socket broadcast error:", err.message);
+  }
+}
+
 /* -------------------------
    Worker loop
 ------------------------- */
@@ -85,6 +114,14 @@ async function runWorkerLoop() {
         status: 'running',
         startedAt: new Date(),
       });
+
+      if (task.workflowId) {
+        await emitProgress(task.workflowId, {
+          type: 'start',
+          message: 'Agent workflow execution initiated...',
+          taskId: task._id
+        });
+      }
 
       const traceId = crypto.randomUUID();
 
@@ -440,6 +477,11 @@ async function runWorkerLoop() {
               writeLog(`Executing Step: ${stepNode.name} (${stepNode.type})`, 'info', {
                 workerId: WORKER_ID, taskId: task._id, workflowId: task.workflowId, traceId: branchContext.traceId
               });
+              await emitProgress(task.workflowId, {
+                type: 'step_start',
+                stepName: stepNode.name,
+                message: `Executing step: ${stepNode.name}...`,
+              });
               result = await executeStep(stepNode, branchContext, agent);
               
               if (!result) {
@@ -513,6 +555,15 @@ async function runWorkerLoop() {
       }
 
       await completeTask(task._id, { success });
+      
+      if (task.workflowId) {
+        await emitProgress(task.workflowId, {
+          type: 'complete',
+          success: success,
+          message: `Workflow completed with status: ${success ? 'Success' : 'Failed'}`,
+          taskId: task._id
+        });
+      }
 
       const durationMs = task.startedAt ? Date.now() - new Date(task.startedAt).getTime() : 0;
 

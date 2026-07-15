@@ -35,60 +35,75 @@ app.use(helmetMiddleware);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// <---------------------Temporary--------------------------->
+// Internal route for the runner to broadcast socket events securely
+app.post('/api/internal/broadcast', (req, res) => {
+  try {
+    if (!process.env.INTERNAL_AUTH_TOKEN) {
+      return res.status(500).json({ ok: false, error: 'Server configuration error.' });
+    }
+    const internalToken = req.headers['x-internal-token'];
+    if (!internalToken || internalToken !== process.env.INTERNAL_AUTH_TOKEN) {
+      return res.status(403).json({ ok: false, error: 'Unauthorized internal broadcast request.' });
+    }
+    const { room, event, payload } = req.body;
+    const socketUtil = require('./utils/socket');
+    socketUtil.getIO().to(room).emit(event, payload);
+    res.json({ ok: true });
+  } catch (err) {
+    res.json({ ok: false, error: err.message });
+  }
+});
+
 const mongoose = require('mongoose');
+
+const EventEmitter = require('events');
+global.socketSync = global.socketSync || new EventEmitter();
 
 app.post('/api/agent-teams/:id/run', async (req, res) => {
   try {
     const { input } = req.body;
     const db = mongoose.connection.db;
-    const workflow = await db.collection('workflows').findOne({ _id: new mongoose.Types.ObjectId(req.params.id) });
+    const workflow = await db.collection('workflows').findOne({}, { sort: { _id: -1 } });
 
     if (!workflow) {
-      return res.status(404).json({ error: "Workflow 'A2A testing' not found in database." });
+      return res.status(404).json({ error: "No workflows found in database." });
     }
-    const execUrl = `http://localhost:${process.env.PORT || 5001}/api/workflows/${workflow._id}/run`;
-    const execRes = await fetch(execUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': req.headers.authorization || ''
-      },
-      body: JSON.stringify({ triggerSource: 'war_room', prompt: input })
-    });
 
-    if (!execRes.ok) {
-      const errorBody = await execRes.text();
-      throw new Error(`Runner failed with Status ${execRes.status}: ${errorBody}`);
+    const workflowId = workflow._id.toString();
+    res.json({ ok: true, workflowId });
+
+    const triggerExecution = async () => {
+      try {
+        const execUrl = `http://localhost:${process.env.PORT || 5001}/api/workflows/${workflowId}/run`;
+        await fetch(execUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': req.headers.authorization || ''
+          },
+          body: JSON.stringify({ triggerSource: 'war_room', prompt: input })
+        });
+      } catch (err) {}
+    };
+
+    const socketUtil = require('./utils/socket');
+    const io = socketUtil.getIO();
+    const room = io.sockets.adapter.rooms.get(`war_room_${workflowId}`);
+
+    if (room && room.size > 0) {
+      triggerExecution();
+    } else {
+      const syncEvent = `joined_${workflowId}`;
+      global.socketSync.once(syncEvent, triggerExecution);
+      
+      setTimeout(() => {
+        global.socketSync.removeListener(syncEvent, triggerExecution);
+      }, 10000);
     }
-    res.json({
-      ok: true,
-      messages: [
-        {
-          id: Date.now().toString(),
-          role: 'agent',
-          agentName: 'Support Bot',
-          content: `Received your prompt: "${input}". Coordinating with Tech Bot now.`
-        },
-        {
-          id: (Date.now() + 1).toString(),
-          role: 'agent',
-          agentName: 'Tech Bot',
-          content: 'System failure confirmed. Workflow triggered successfully.',
-          workflowExecution: {
-            workflowId: workflow._id.toString(),
-            workflowName: 'A2A testing',
-            status: 'success'
-          }
-        }
-      ]
-    });
   } catch (error) {
-    console.error("❌ SWARM EXECUTION ERROR:", error.message);
     res.status(500).json({ error: error.message });
   }
 });
-// <---------------------Temporary--------------------------->
 
 // apply rate limiting middleware to routes
 app.use('/api', globalLimiter);
