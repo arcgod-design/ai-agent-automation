@@ -28,6 +28,7 @@ import {
   History,
   Globe,
   ShieldCheck,
+  BarChart2,
 } from 'lucide-react';
 import VersionHistoryDialog from '@/components/workflow/version-history-dialog';
 import ApiSettingsDialog from '@/components/workflow/api-settings-dialog';
@@ -463,6 +464,13 @@ export default function WorkflowDetailPage() {
               <Button variant="outline" className="h-9">
                 <Settings className="mr-2 size-4" />
                 Configure
+              </Button>
+            </Link>
+
+            <Link href={`/insights/workflows/${workflow._id}`}>
+              <Button variant="outline" className="h-9">
+                <BarChart2 className="mr-2 size-4" />
+                Insights
               </Button>
             </Link>
 
