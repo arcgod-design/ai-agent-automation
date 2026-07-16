@@ -42,7 +42,9 @@ app.post('/api/agent-teams/:id/run', async (req, res) => {
   try {
     const { input } = req.body;
     const db = mongoose.connection.db;
-    const workflow = await db.collection('workflows').findOne({ _id: new mongoose.Types.ObjectId(req.params.id) });
+    const workflow = await db
+      .collection('workflows')
+      .findOne({ _id: new mongoose.Types.ObjectId(req.params.id) });
 
     if (!workflow) {
       return res.status(404).json({ error: "Workflow 'A2A testing' not found in database." });
@@ -52,9 +54,9 @@ app.post('/api/agent-teams/:id/run', async (req, res) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': req.headers.authorization || ''
+        Authorization: req.headers.authorization || '',
       },
-      body: JSON.stringify({ triggerSource: 'war_room', prompt: input })
+      body: JSON.stringify({ triggerSource: 'war_room', prompt: input }),
     });
 
     if (!execRes.ok) {
@@ -68,7 +70,7 @@ app.post('/api/agent-teams/:id/run', async (req, res) => {
           id: Date.now().toString(),
           role: 'agent',
           agentName: 'Support Bot',
-          content: `Received your prompt: "${input}". Coordinating with Tech Bot now.`
+          content: `Received your prompt: "${input}". Coordinating with Tech Bot now.`,
         },
         {
           id: (Date.now() + 1).toString(),
@@ -78,20 +80,19 @@ app.post('/api/agent-teams/:id/run', async (req, res) => {
           workflowExecution: {
             workflowId: workflow._id.toString(),
             workflowName: 'A2A testing',
-            status: 'success'
-          }
-        }
-      ]
+            status: 'success',
+          },
+        },
+      ],
     });
   } catch (error) {
-    console.error("❌ SWARM EXECUTION ERROR:", error.message);
+    console.error('❌ SWARM EXECUTION ERROR:', error.message);
     res.status(500).json({ error: error.message });
   }
 });
 // <---------------------Temporary--------------------------->
 
 // apply rate limiting middleware to routes
-app.use('/api', globalLimiter);
 app.use('/webhook', webhookLimiter);
 
 // health
@@ -100,26 +101,26 @@ app.get('/health', (req, res) => res.json({ ok: true, ts: Date.now() }));
 // routes
 app.use('/api/auth', authRoutes);
 app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/tasks', taskRoutes);
-app.use('/api/documents', documentRoutes);
-app.use('/api/workflows', workflowRoutes);
-app.use('/api/agents', agentRoutes);
-app.use('/api/agent-teams', agentTeamRoutes);
-app.use('/api/schedules', scheduleRoutes);
-app.use('/api/webhooks', webhookRoutes);
+app.use('/api/tasks', globalLimiter, taskRoutes);
+app.use('/api/documents', globalLimiter, documentRoutes);
+app.use('/api/workflows', globalLimiter, workflowRoutes);
+app.use('/api/agents', globalLimiter, agentRoutes);
+app.use('/api/agent-teams', globalLimiter, agentTeamRoutes);
+app.use('/api/schedules', globalLimiter, scheduleRoutes);
+app.use('/api/webhooks', globalLimiter, webhookRoutes);
 app.use('/webhook/a2a', a2aPublicRoutes);
 app.use('/webhook', webhookPublicRoutes);
-app.use('/api/templates', templateRoutes);
-app.use('/api/logs', logRoutes);
-app.use('/api/settings', settingsRoutes);
-app.use('/api/system', systemRoutes);
-app.use('/api/memory', memoryRoutes);
-app.use('/api/assistant', assistantRoutes);
-app.use('/api/telemetry', telemetryRoutes);
-app.use('/api/insights', insightsRoutes);
-app.use('/api/mcp', mcpRoutes);
-app.use('/api/keys', apiKeyRoutes);
-app.use('/api/workflows/public', workflowPublicRoutes);
+app.use('/api/templates', globalLimiter, templateRoutes);
+app.use('/api/logs', globalLimiter, logRoutes);
+app.use('/api/settings', globalLimiter, settingsRoutes);
+app.use('/api/system', globalLimiter, systemRoutes);
+app.use('/api/memory', globalLimiter, memoryRoutes);
+app.use('/api/assistant', globalLimiter, assistantRoutes);
+app.use('/api/telemetry', globalLimiter, telemetryRoutes);
+app.use('/api/insights', globalLimiter, insightsRoutes);
+app.use('/api/mcp', globalLimiter, mcpRoutes);
+app.use('/api/keys', globalLimiter, apiKeyRoutes);
+app.use('/api/workflows/public', globalLimiter, workflowPublicRoutes);
 
 // generic 404
 app.use((req, res) => res.status(404).json({ error: 'Not found' }));

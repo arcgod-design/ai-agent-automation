@@ -5,10 +5,11 @@ const {
   getExecutionTrend,
   getLiveWorkflowStatus,
 } = require('../controllers/dashboard.controller');
+const { globalLimiter } = require('../middleware/rateLimit.middleware');
 
 router.use(auth);
-router.get('/stats', getDashboardStats);
-router.get('/execution-trend', getExecutionTrend);
+router.get('/stats', globalLimiter, getDashboardStats);
+router.get('/execution-trend', globalLimiter, getExecutionTrend);
 router.get('/live-status', getLiveWorkflowStatus);
 
 module.exports = router;
