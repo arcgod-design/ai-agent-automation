@@ -16,6 +16,7 @@ import {
   FlaskConical,
   Brain,
   FileText,
+  BarChart2,
 } from 'lucide-react';
 import { UserProfileMenu } from '@/components/user-profile-menu';
 import { cn } from '@/lib/utils';
@@ -43,6 +44,7 @@ const navGroups = [
       { name: 'Agent Playground', href: '/playground', icon: FlaskConical },
       { name: 'Documents', href: '/documents', icon: FileText },
       { name: 'Memory', href: '/memory', icon: Brain },
+      { name: 'Insights', href: '/insights', icon: BarChart2 },
     ],
   },
   {

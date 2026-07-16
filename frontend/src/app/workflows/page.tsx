@@ -881,7 +881,7 @@ export default function WorkflowsPage() {
                     <ChevronDown className="ml-2 h-3 w-3 opacity-70" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-[200px]">
+                <DropdownMenuContent align="end" className="w-50">
                   <DropdownMenuItem
                     onClick={() => setOpen('blank')}
                     className="py-2.5 cursor-pointer"
