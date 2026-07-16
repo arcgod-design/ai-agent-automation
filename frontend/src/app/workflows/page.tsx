@@ -794,8 +794,11 @@ export default function WorkflowsPage() {
       );
     }
 
-    if (statusFilter !== 'all') {
-      result = result.filter((w) => w.status === statusFilter);
+   if (statusFilter !== 'all') {
+      result = result.filter((w) => {
+        const effectiveStatus = w.status === 'pending' ? 'idle': w.status;
+        return effectiveStatus === statusFilter;
+      });
     }
 
     result.sort((a, b) => {
