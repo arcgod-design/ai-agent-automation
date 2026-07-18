@@ -60,6 +60,16 @@ const webhookLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// 5. Dashboard Limiter (applied to public /api/live-status routes)
+const dashboardLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: Number(process.env.RATE_LIMIT_GLOBAL_MAX) || 100,
+  message: 'Too many requests. Please try again later.',
+  handler: limitHandler,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 module.exports = {
   globalLimiter,
   authLimiter,

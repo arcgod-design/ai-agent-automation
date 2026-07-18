@@ -20,15 +20,14 @@ type LiveStatusResponse = {
   running: Task[];
   failed: Task[];
 };
+
 export function WorkflowsStatusCard() {
-  // Use a state as a key to "bust" the cache and bypass didFetch in useApi
-  const [refetchKey, setRefetchKey] = useState(0);
-  const { data, loading } = useApi<LiveStatusResponse>(`/dashboard/live-status?v=${refetchKey}`);
+  const { data, loading, refetch } = useApi<LiveStatusResponse>(`/dashboard/live-status`);
   const [tab, settab] = useState<'Running' | 'Failed'>('Running');
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setRefetchKey((prev) => prev + 1);
+      refetch();
     }, 5000);
     return () => clearInterval(interval);
   }, []);
@@ -59,9 +58,14 @@ export function WorkflowsStatusCard() {
 
       <div className="flex-1 flex flex-col pt-6 overflow-y-auto">
         <div className="w-full space-y-4">
-          {hasData ? (
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-10 opacity-60">
+              <Loader2 className="size-8 mb-3 animate-spin text-muted-foreground/30" />
+              <p className="text-sm font-medium">Loading workflows...</p>
+            </div>
+          ) : hasData ? (
             tasks.map((item: Task) => (
-              <Link href={`/tasks/${item._id}`} key={item._id}>
+              <Link href={`/tasks/${item._id}`} key={item._id} className="block">
                 <div className="flex flex-col gap-2 p-3 rounded-lg border border-border/10 hover:bg-muted/10 transition-colors">
                   <div className="flex justify-between items-start">
                     <p className="text-sm font-medium text-foreground">{item.name}</p>
