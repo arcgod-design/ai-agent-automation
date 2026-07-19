@@ -58,27 +58,27 @@ async function emitProgress(workflowId, payload) {
     if (!process.env.INTERNAL_AUTH_TOKEN) {
       throw new Error('INTERNAL_AUTH_TOKEN not configured');
     }
-    const port = process.env.PORT || 5001; 
+    const port = process.env.PORT || 5001;
     const backendHost = process.env.BACKEND_INTERNAL_URL || `http://localhost:${port}`;
-    
+
     const res = await fetch(`${backendHost}/api/internal/broadcast`, {
       method: 'POST',
-      headers: { 
+      headers: {
         'Content-Type': 'application/json',
-        'X-Internal-Token': process.env.INTERNAL_AUTH_TOKEN
+        'X-Internal-Token': process.env.INTERNAL_AUTH_TOKEN,
       },
       body: JSON.stringify({
         room: `war_room_${workflowId}`,
         event: 'workflow_status',
-        payload
-      })
+        payload,
+      }),
     });
 
     if (!res.ok) {
       console.error(`❌ Broadcast failed: Server responded with status ${res.status}`);
     }
   } catch (err) {
-    console.error("❌ Runner socket broadcast error:", err.message);
+    console.error('❌ Runner socket broadcast error:', err.message);
   }
 }
 
@@ -106,7 +106,7 @@ async function runWorkerLoop() {
         await sleep(pollIntervalMs);
         continue;
       }
-      
+
       // -------------------------
       // Mark task running
       // -------------------------
@@ -119,7 +119,7 @@ async function runWorkerLoop() {
         await emitProgress(task.workflowId, {
           type: 'start',
           message: 'Agent workflow execution initiated...',
-          taskId: task._id
+          taskId: task._id,
         });
       }
 
@@ -129,7 +129,7 @@ async function runWorkerLoop() {
         workerId: WORKER_ID,
         taskId: task._id,
         workflowId: task.workflowId,
-        traceId
+        traceId,
       });
 
       const workflow = task.workflowId ? await Workflow.findById(task.workflowId).lean() : null;
@@ -198,7 +198,7 @@ async function runWorkerLoop() {
           workerId: WORKER_ID,
           taskId: task._id,
           workflowId: task.workflowId,
-          traceId
+          traceId,
         });
 
         function getStepId(step) {
@@ -217,29 +217,20 @@ async function runWorkerLoop() {
         // 🔥 DETERMINISTIC REPLAY RESUMABLE EXECUTION
         // -------------------------------------------------------------
         const targetSet = new Set(edges.map((e) => e.target));
-        const entryStep = steps.find(
-              (s) => !targetSet.has(getStepId(s))
-            );
+        const entryStep = steps.find((s) => !targetSet.has(getStepId(s)));
 
-            let currentStep = entryStep;
+        let currentStep = entryStep;
 
-            if (
-              task.executionMode === 'partial' &&
-              typeof task.currentStep === 'number'
-            ) {
-              currentStep = steps[task.currentStep] || entryStep;
+        if (task.executionMode === 'partial' && typeof task.currentStep === 'number') {
+          currentStep = steps[task.currentStep] || entryStep;
 
-              writeLog(
-                `[Replay] Resuming task from step index ${task.currentStep}`,
-                'info',
-                {
-                  workerId: WORKER_ID,
-                  taskId: task._id,
-                  workflowId: task.workflowId,
-                  traceId,
-                }
-              );
-            }
+          writeLog(`[Replay] Resuming task from step index ${task.currentStep}`, 'info', {
+            workerId: WORKER_ID,
+            taskId: task._id,
+            workflowId: task.workflowId,
+            traceId,
+          });
+        }
 
         function getNextEdge(stepLocal, resultLocal) {
           if (stepLocal.type === 'condition') {
@@ -401,9 +392,15 @@ async function runWorkerLoop() {
 
                 if (!hasLock) {
                   // Another worker has already claimed or completed this join node processing
-                  writeLog(`[Runner] Another worker is processing join node ${joinNodeId}. Aborting branch execution.`, 'info', {
-                    workerId: WORKER_ID, taskId: task._id, traceId: branchContext.traceId
-                  });
+                  writeLog(
+                    `[Runner] Another worker is processing join node ${joinNodeId}. Aborting branch execution.`,
+                    'info',
+                    {
+                      workerId: WORKER_ID,
+                      taskId: task._id,
+                      traceId: branchContext.traceId,
+                    }
+                  );
                   return { success: true, branchContext, joinSynchronized: true };
                 }
 
@@ -423,9 +420,7 @@ async function runWorkerLoop() {
                   // calls made by other workers, so checking it directly would allow
                   // a second worker (arriving after lock release) to see the old
                   // state and duplicate the join execution.
-                  const freshTask = await Task.findById(task._id)
-                    .select('stepResults')
-                    .lean();
+                  const freshTask = await Task.findById(task._id).select('stepResults').lean();
 
                   const isJoinAlreadyPersisted =
                     Array.isArray(freshTask?.stepResults) &&
@@ -467,15 +462,25 @@ async function runWorkerLoop() {
               : null;
 
             if (cachedResult) {
-              writeLog(`[Replay] Fast-forwarding previously executed step: ${stepNode.name}`, 'info', {
-                workerId: WORKER_ID, taskId: task._id, workflowId: task.workflowId, traceId: branchContext.traceId
-              });
+              writeLog(
+                `[Replay] Fast-forwarding previously executed step: ${stepNode.name}`,
+                'info',
+                {
+                  workerId: WORKER_ID,
+                  taskId: task._id,
+                  workflowId: task.workflowId,
+                  traceId: branchContext.traceId,
+                }
+              );
               result = cachedResult;
               // The specific stepResult will already contain the updated output/feedback
               // from when the user approved or rejected it via the API.
             } else {
               writeLog(`Executing Step: ${stepNode.name} (${stepNode.type})`, 'info', {
-                workerId: WORKER_ID, taskId: task._id, workflowId: task.workflowId, traceId: branchContext.traceId
+                workerId: WORKER_ID,
+                taskId: task._id,
+                workflowId: task.workflowId,
+                traceId: branchContext.traceId,
               });
               await emitProgress(task.workflowId, {
                 type: 'step_start',
@@ -483,7 +488,7 @@ async function runWorkerLoop() {
                 message: `Executing step: ${stepNode.name}...`,
               });
               result = await executeStep(stepNode, branchContext, agent);
-              
+
               if (!result) {
                 throw new Error(
                   `executeStep returned ${result} for step ${stepNode.name} (${stepNode.type})`
@@ -519,12 +524,16 @@ async function runWorkerLoop() {
                   },
                 },
               });
-              writeLog(`Task ${task._id} paused for approval at step ${getStepId(stepNode)}`, 'info', {
-                workerId: WORKER_ID,
-                taskId: task._id,
-                stepId: getStepId(stepNode),
-                traceId: branchContext.traceId
-              });
+              writeLog(
+                `Task ${task._id} paused for approval at step ${getStepId(stepNode)}`,
+                'info',
+                {
+                  workerId: WORKER_ID,
+                  taskId: task._id,
+                  stepId: getStepId(stepNode),
+                  traceId: branchContext.traceId,
+                }
+              );
               return { success: false, branchContext, paused: true };
             }
 
@@ -555,13 +564,13 @@ async function runWorkerLoop() {
       }
 
       await completeTask(task._id, { success });
-      
+
       if (task.workflowId) {
         await emitProgress(task.workflowId, {
           type: 'complete',
           success: success,
           message: `Workflow completed with status: ${success ? 'Success' : 'Failed'}`,
-          taskId: task._id
+          taskId: task._id,
         });
       }
 
@@ -576,7 +585,7 @@ async function runWorkerLoop() {
         workerId: WORKER_ID,
         taskId: task._id,
         workflowId: task.workflowId,
-        traceId: context.traceId
+        traceId: context.traceId,
       });
     } catch (error) {
       console.error('❌ Worker loop error:', error);

@@ -1,14 +1,15 @@
-"use client";
+'use client';
 
-import { useState, useRef, useEffect } from "react";
-import { useParams } from "next/navigation";
-import { runAgentTeam } from "@/lib/api";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Bot, Zap, Send, ArrowLeft } from "lucide-react";
-import Link from "next/link";
-import { cn } from "@/lib/utils";
-import { io, Socket } from "socket.io-client";
+import { useState, useRef, useEffect } from 'react';
+import { useParams } from 'next/navigation';
+import { runAgentTeam } from '@/lib/api';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Bot, Zap, Send, ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
+import { cn } from '@/lib/utils';
+import type { Socket } from 'socket.io-client';
+import { io } from 'socket.io-client';
 
 interface Message {
   id: string;
@@ -26,7 +27,7 @@ export default function WarRoomChat() {
   const params = useParams();
   const teamId = params.id as string;
   const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const socketRef = useRef<Socket | null>(null);
@@ -38,19 +39,22 @@ export default function WarRoomChat() {
   }, [messages, isTyping]);
 
   useEffect(() => {
-    const socketUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+    const socketUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
     const socket = io(socketUrl);
     socketRef.current = socket;
 
-    socket.on("connect", () => {
-      const token = localStorage.getItem('token') || localStorage.getItem('accessToken') || localStorage.getItem('jwt');
+    socket.on('connect', () => {
+      const token =
+        localStorage.getItem('token') ||
+        localStorage.getItem('accessToken') ||
+        localStorage.getItem('jwt');
       if (token) {
-        socket.emit("join_war_room", { teamId, token });
+        socket.emit('join_war_room', { teamId, token });
       } else {
-        console.error("🚨 AUTH ERROR on load: Missing token.");
+        console.error('🚨 AUTH ERROR on load: Missing token.');
       }
     });
-    socket.on("workflow_status", (data: any) => {
+    socket.on('workflow_status', (data: any) => {
       setIsTyping(false);
 
       const newMsg: Message = {
@@ -62,8 +66,8 @@ export default function WarRoomChat() {
       if (data.type === 'complete') {
         newMsg.workflowExecution = {
           workflowId: data.taskId || 'unknown',
-          workflowName: 'Agent Workflow', 
-          status: data.success ? 'success' : 'failed'
+          workflowName: 'Agent Workflow',
+          status: data.success ? 'success' : 'failed',
         };
       }
 
@@ -85,20 +89,25 @@ export default function WarRoomChat() {
     };
 
     setMessages((prev) => [...prev, userMsg]);
-    setInput("");
+    setInput('');
     setIsTyping(true);
 
     try {
       const res: any = await runAgentTeam(teamId, userMsg.content);
-      
+
       if (res && res.workflowId) {
-        const token = localStorage.getItem('token') || localStorage.getItem('accessToken') || localStorage.getItem('jwt');
-        
+        const token =
+          localStorage.getItem('token') ||
+          localStorage.getItem('accessToken') ||
+          localStorage.getItem('jwt');
+
         if (!token) {
-          console.error("🚨 AUTH ERROR: Could not find your login token in localStorage. The socket room will reject the connection.");
+          console.error(
+            '🚨 AUTH ERROR: Could not find your login token in localStorage. The socket room will reject the connection.'
+          );
         } else {
-          console.log("✅ Token found, sending to socket server...");
-          socketRef.current?.emit("join_war_room", { teamId: res.workflowId, token });
+          console.log('✅ Token found, sending to socket server...');
+          socketRef.current?.emit('join_war_room', { teamId: res.workflowId, token });
         }
       }
     } catch (error) {
@@ -128,10 +137,10 @@ export default function WarRoomChat() {
           <div
             key={msg.id}
             className={cn(
-              "flex flex-col max-w-[85%] rounded-2xl p-4 shadow-sm",
-              msg.role === 'user' 
-                ? "ml-auto bg-indigo-600 text-white rounded-br-none" 
-                : "bg-card border rounded-bl-none"
+              'flex flex-col max-w-[85%] rounded-2xl p-4 shadow-sm',
+              msg.role === 'user'
+                ? 'ml-auto bg-indigo-600 text-white rounded-br-none'
+                : 'bg-card border rounded-bl-none'
             )}
           >
             {msg.role !== 'user' && (
@@ -142,10 +151,8 @@ export default function WarRoomChat() {
                 </span>
               </div>
             )}
-            
-            <div className="text-sm leading-relaxed whitespace-pre-wrap">
-              {msg.content}
-            </div>
+
+            <div className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</div>
 
             {msg.workflowExecution && (
               <div className="mt-4 flex items-center gap-3 bg-muted/50 border border-indigo-500/30 rounded-xl p-3">
@@ -157,7 +164,8 @@ export default function WarRoomChat() {
                     ⚡ Workflow Execution Complete
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    Trace ID: {msg.workflowExecution.workflowId} • Status: {msg.workflowExecution.status}
+                    Trace ID: {msg.workflowExecution.workflowId} • Status:{' '}
+                    {msg.workflowExecution.status}
                   </span>
                 </div>
               </div>
@@ -180,7 +188,10 @@ export default function WarRoomChat() {
           placeholder="Trigger the team (e.g. 'The server is down, figure it out')..."
           className="flex-1 h-12 shadow-sm rounded-xl bg-background"
         />
-        <Button onClick={handleSend} className="h-12 w-12 rounded-xl bg-indigo-600 hover:bg-indigo-700 shrink-0 p-0 text-white">
+        <Button
+          onClick={handleSend}
+          className="h-12 w-12 rounded-xl bg-indigo-600 hover:bg-indigo-700 shrink-0 p-0 text-white"
+        >
           <Send className="size-5" />
         </Button>
       </div>

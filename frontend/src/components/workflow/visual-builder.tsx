@@ -35,6 +35,7 @@ import type {
   McpTool,
   NodeDefinition,
 } from '@/types/workflow';
+import { useToast } from '@/hooks/use-toast';
 
 type StepNode = {
   id: string;
@@ -165,6 +166,7 @@ export default function VisualBuilder({
   const [agents, setAgents] = useState<WorkflowAgent[]>([]);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const selectedStep = steps.find((s) => s.id === selectedNode?.id);
+  const { addToast } = useToast();
   const selectedMcpTool = mcpTools.find(
     (tool) => tool.serverId === selectedStep?.serverId && tool.name === selectedStep?.toolName
   );
@@ -401,7 +403,16 @@ export default function VisualBuilder({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onSave, selectedNode, steps, flowEdges, deleteNode, setSteps, pushEdgesToParent, setCommandPaletteOpen]);
+  }, [
+    onSave,
+    selectedNode,
+    steps,
+    flowEdges,
+    deleteNode,
+    setSteps,
+    pushEdgesToParent,
+    setCommandPaletteOpen,
+  ]);
 
   /* ---------- EVENTS ---------- */
 
@@ -866,12 +877,16 @@ export default function VisualBuilder({
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-card/80 backdrop-blur-sm border rounded-md shadow-sm p-3 text-xs text-muted-foreground pointer-events-none hidden md:block z-10">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-1.5">
-            <kbd className="bg-muted border rounded px-1.5 py-0.5 font-mono text-[10px]">⌘/Ctrl</kbd>{' '}
+            <kbd className="bg-muted border rounded px-1.5 py-0.5 font-mono text-[10px]">
+              ⌘/Ctrl
+            </kbd>{' '}
             + <kbd className="bg-muted border rounded px-1.5 py-0.5 font-mono text-[10px]">S</kbd>{' '}
             <span>Save</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <kbd className="bg-muted border rounded px-1.5 py-0.5 font-mono text-[10px]">⌘/Ctrl</kbd>{' '}
+            <kbd className="bg-muted border rounded px-1.5 py-0.5 font-mono text-[10px]">
+              ⌘/Ctrl
+            </kbd>{' '}
             + <kbd className="bg-muted border rounded px-1.5 py-0.5 font-mono text-[10px]">D</kbd>{' '}
             <span>Duplicate</span>
           </div>
@@ -880,7 +895,9 @@ export default function VisualBuilder({
             <span>Delete</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <kbd className="bg-muted border rounded px-1.5 py-0.5 font-mono text-[10px]">⌘/Ctrl</kbd>{' '}
+            <kbd className="bg-muted border rounded px-1.5 py-0.5 font-mono text-[10px]">
+              ⌘/Ctrl
+            </kbd>{' '}
             + <kbd className="bg-muted border rounded px-1.5 py-0.5 font-mono text-[10px]">Z</kbd>{' '}
             <span>Undo</span>
           </div>

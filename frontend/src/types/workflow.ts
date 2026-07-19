@@ -3,13 +3,14 @@
 export interface NodeField {
   name: string;
   label: string;
-  type: "text" | "textarea" | "number" | "boolean" | "select";
+  type: 'text' | 'textarea' | 'number' | 'boolean' | 'select';
   options?: string[];
   default?: any;
   required?: boolean;
 }
 
 export interface NodeDefinition {
+  type: string;
   id: string;
   name: string;
   version: string;
