@@ -210,8 +210,7 @@ async function getExecutionTrend(req, res) {
 
     const summary = {
       total: totalRuns,
-      successRate:
-        totalRuns > 0 ? parseFloat(((totalCompleted / totalRuns) * 100).toFixed(1)) : 0,
+      successRate: totalRuns > 0 ? parseFloat(((totalCompleted / totalRuns) * 100).toFixed(1)) : 0,
       avgDurationMs: totalWithDuration > 0 ? Math.round(totalDuration / totalWithDuration) : 0,
     };
 
@@ -222,4 +221,23 @@ async function getExecutionTrend(req, res) {
   }
 }
 
-module.exports = { getDashboardStats, getExecutionTrend };
+async function getLiveWorkflowStatus(req, res) {
+  try {
+    const userId = req.user._id;
+
+    const running = await Task.find({ userId, status: 'running' }).sort({ startedAt: -1 }).limit(5);
+
+    const failed = await Task.find({ userId, status: 'failed' }).sort({ startedAt: -1 }).limit(5);
+
+    res.json({
+      ok: true,
+      running,
+      failed,
+    });
+  } catch (err) {
+    console.error('live status error', err);
+    res.status(500).json({ ok: false, error: 'server_error' });
+  }
+}
+
+module.exports = { getDashboardStats, getExecutionTrend, getLiveWorkflowStatus };

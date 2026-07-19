@@ -5,8 +5,8 @@ module.exports = {
     io = require('socket.io')(server, {
       cors: {
         origin: '*',
-        methods: ['GET', 'POST']
-      }
+        methods: ['GET', 'POST'],
+      },
     });
     return io;
   },
@@ -15,5 +15,5 @@ module.exports = {
       throw new Error('Socket.io not initialized!');
     }
     return io;
-  }
+  },
 };

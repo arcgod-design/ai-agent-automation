@@ -19,16 +19,7 @@ import {
   XCircle,
   Zap,
 } from 'lucide-react';
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Cell,
-  PieChart,
-  Pie,
-} from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell, PieChart, Pie } from 'recharts';
 
 import { AuthenticatedLayout } from '@/components/layout/authenticated-layout';
 import { PageContainer } from '@/components/layout/page-container';
@@ -57,12 +48,7 @@ import {
 } from '@/components/ui/chart';
 import { useApi } from '@/hooks/useApi';
 import { cn } from '@/lib/utils';
-import type {
-  WorkflowInsights,
-  StepStat,
-  BranchRouting,
-  Recommendation,
-} from '@/types/insights';
+import type { WorkflowInsights, StepStat, BranchRouting, Recommendation } from '@/types/insights';
 
 /* ─── helpers ─────────────────────────────────────────────────────────── */
 
@@ -137,18 +123,35 @@ function HealthScoreCard({ score }: { score: number | null }) {
   const offset = circumference - (pct / 100) * circumference;
 
   return (
-    <Card className={cn('border-border/20 bg-gradient-to-br p-6 flex flex-col items-center gap-3', bg)}>
+    <Card
+      className={cn('border-border/20 bg-gradient-to-br p-6 flex flex-col items-center gap-3', bg)}
+    >
       <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         Workflow Health Score
       </p>
       <div className="relative w-32 h-32">
         <svg className="w-32 h-32 -rotate-90" viewBox="0 0 120 120">
-          <circle cx="60" cy="60" r="54" fill="none" className="text-muted/20"
-            stroke="currentColor" strokeWidth="10" />
-          <circle cx="60" cy="60" r="54" fill="none"
-            stroke="currentColor" className={cn(color, 'transition-all duration-700')}
-            strokeWidth="10" strokeLinecap="round"
-            strokeDasharray={circumference} strokeDashoffset={offset} />
+          <circle
+            cx="60"
+            cy="60"
+            r="54"
+            fill="none"
+            className="text-muted/20"
+            stroke="currentColor"
+            strokeWidth="10"
+          />
+          <circle
+            cx="60"
+            cy="60"
+            r="54"
+            fill="none"
+            stroke="currentColor"
+            className={cn(color, 'transition-all duration-700')}
+            strokeWidth="10"
+            strokeLinecap="round"
+            strokeDasharray={circumference}
+            strokeDashoffset={offset}
+          />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span className={cn('text-3xl font-bold', color)}>{score ?? '—'}</span>
@@ -192,21 +195,33 @@ function StepPerformanceSection({ steps }: { steps: StepStat[] }) {
               s.successRate >= 80
                 ? 'text-emerald-500'
                 : s.successRate >= 60
-                ? 'text-amber-500'
-                : 'text-rose-500';
+                  ? 'text-amber-500'
+                  : 'text-rose-500';
             const slowStep = s.avgDurationMs > 10000;
             return (
               <TableRow key={s.stepId}>
-                <TableCell className="font-mono text-xs max-w-[160px] truncate">{s.stepId}</TableCell>
-                <TableCell>
-                  <Badge variant="secondary" className="text-[10px]">{s.type}</Badge>
+                <TableCell className="font-mono text-xs max-w-[160px] truncate">
+                  {s.stepId}
                 </TableCell>
-                <TableCell className="text-right tabular-nums text-muted-foreground">{s.executions}</TableCell>
+                <TableCell>
+                  <Badge variant="secondary" className="text-[10px]">
+                    {s.type}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-right tabular-nums text-muted-foreground">
+                  {s.executions}
+                </TableCell>
                 <TableCell className={cn('text-right tabular-nums font-semibold', srColor)}>
                   {s.successRate.toFixed(1)}%
                 </TableCell>
-                <TableCell className={cn('text-right tabular-nums', slowStep && 'text-amber-500 font-semibold')}>
-                  {fmtMs(s.avgDurationMs)}{slowStep && <span className="text-[10px] ml-1">⚠</span>}
+                <TableCell
+                  className={cn(
+                    'text-right tabular-nums',
+                    slowStep && 'text-amber-500 font-semibold'
+                  )}
+                >
+                  {fmtMs(s.avgDurationMs)}
+                  {slowStep && <span className="text-[10px] ml-1">⚠</span>}
                 </TableCell>
                 <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate">
                   {s.commonErrors.length > 0 ? s.commonErrors.slice(0, 2).join('; ') : '—'}
@@ -224,21 +239,30 @@ function StepPerformanceSection({ steps }: { steps: StepStat[] }) {
           <ChartContainer config={stepChartConfig} className="h-[180px] w-full">
             <BarChart data={chartData} margin={{ top: 4, right: 8, left: -10, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-border/20" />
-              <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }}
-                axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }}
-                axisLine={false} tickLine={false}
-                domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
+              <XAxis
+                dataKey="name"
+                tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis
+                tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }}
+                axisLine={false}
+                tickLine={false}
+                domain={[0, 100]}
+                tickFormatter={(v) => `${v}%`}
+              />
               <ChartTooltip content={<ChartTooltipContent />} />
               <Bar dataKey="successRate" radius={[4, 4, 0, 0]} maxBarSize={36}>
                 {chartData.map((e) => (
-                  <Cell key={e.name}
+                  <Cell
+                    key={e.name}
                     fill={
                       e.successRate >= 80
                         ? 'oklch(0.72 0.19 160)'
                         : e.successRate >= 60
-                        ? 'oklch(0.78 0.19 80)'
-                        : 'oklch(0.65 0.25 25)'
+                          ? 'oklch(0.78 0.19 80)'
+                          : 'oklch(0.65 0.25 25)'
                     }
                   />
                 ))}
@@ -265,12 +289,18 @@ function BranchCard({ branch }: { branch: BranchRouting }) {
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2">
           <GitBranch className="size-4 text-primary" />
-          <span className="font-mono text-sm font-medium truncate max-w-[180px]">{branch.stepId}</span>
-          <Badge variant="secondary" className="text-[10px]">{branch.type}</Badge>
+          <span className="font-mono text-sm font-medium truncate max-w-[180px]">
+            {branch.stepId}
+          </span>
+          <Badge variant="secondary" className="text-[10px]">
+            {branch.type}
+          </Badge>
         </div>
         <div className="flex items-center gap-2">
           {branch.isSkewed && (
-            <Badge className="text-[10px] bg-amber-500/15 text-amber-700 dark:text-amber-400">⚠ Skewed</Badge>
+            <Badge className="text-[10px] bg-amber-500/15 text-amber-700 dark:text-amber-400">
+              ⚠ Skewed
+            </Badge>
           )}
           {branch.deadBranches.length > 0 && (
             <Badge className="text-[10px] bg-rose-500/15 text-rose-600 dark:text-rose-400">
@@ -285,8 +315,16 @@ function BranchCard({ branch }: { branch: BranchRouting }) {
         {pieData.length > 0 && (
           <ChartContainer config={config} className="w-full sm:w-52 h-[160px] shrink-0">
             <PieChart>
-              <Pie data={pieData} cx="50%" cy="50%" innerRadius={40} outerRadius={70}
-                dataKey="value" paddingAngle={2} nameKey="name">
+              <Pie
+                data={pieData}
+                cx="50%"
+                cy="50%"
+                innerRadius={40}
+                outerRadius={70}
+                dataKey="value"
+                paddingAngle={2}
+                nameKey="name"
+              >
                 {pieData.map((entry) => (
                   <Cell key={entry.name} fill={entry.fill} />
                 ))}
@@ -294,9 +332,10 @@ function BranchCard({ branch }: { branch: BranchRouting }) {
               <ChartTooltip
                 content={
                   <ChartTooltipContent
-                    formatter={(value, name, props) =>
-                      [`${value} (${props.payload?.pct?.toFixed(1)}%)`, name]
-                    }
+                    formatter={(value, name, props) => [
+                      `${value} (${props.payload?.pct?.toFixed(1)}%)`,
+                      name,
+                    ]}
                   />
                 }
               />
@@ -311,8 +350,10 @@ function BranchCard({ branch }: { branch: BranchRouting }) {
             <div key={o.label} className="space-y-1">
               <div className="flex items-center justify-between text-xs">
                 <span className="flex items-center gap-1.5">
-                  <span className="inline-block w-2 h-2 rounded-full"
-                    style={{ background: BRANCH_COLORS[i % BRANCH_COLORS.length] }} />
+                  <span
+                    className="inline-block w-2 h-2 rounded-full"
+                    style={{ background: BRANCH_COLORS[i % BRANCH_COLORS.length] }}
+                  />
                   {o.label}
                 </span>
                 <span className="font-semibold tabular-nums">{o.pct.toFixed(1)}%</span>
@@ -362,13 +403,21 @@ export default function WorkflowInsightsPage() {
         {/* header */}
         <div className="flex items-center gap-3 mb-6">
           <Button variant="ghost" size="icon" asChild className="shrink-0">
-            <Link href="/insights"><ArrowLeft className="size-4" /></Link>
+            <Link href="/insights">
+              <ArrowLeft className="size-4" />
+            </Link>
           </Button>
           <div className="min-w-0">
             <h1 className="text-xl font-bold truncate">Workflow Insights</h1>
             <p className="text-xs text-muted-foreground font-mono truncate">{params.workflowId}</p>
           </div>
-          <Button variant="outline" size="sm" onClick={refetch} disabled={loading} className="ml-auto shrink-0">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={refetch}
+            disabled={loading}
+            className="ml-auto shrink-0"
+          >
             <RefreshCw className={cn('size-4 mr-2', loading && 'animate-spin')} />
             Refresh
           </Button>
@@ -390,32 +439,63 @@ export default function WorkflowInsightsPage() {
 
         {(loading || (data && !data.message)) && (
           <div className="space-y-8">
-
             {/* Row 1: Health score + Execution KPIs */}
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
               <div className="lg:col-span-1">
-                {loading
-                  ? <CardSkeleton className="h-52" />
-                  : <HealthScoreCard score={data?.healthScore ?? null} />
-                }
+                {loading ? (
+                  <CardSkeleton className="h-52" />
+                ) : (
+                  <HealthScoreCard score={data?.healthScore ?? null} />
+                )}
               </div>
               <div className="lg:col-span-3 grid grid-cols-2 sm:grid-cols-4 gap-3 content-start">
                 {loading
                   ? Array.from({ length: 8 }).map((_, i) => <MetricCardSkeleton key={i} />)
                   : data?.runStats && (
-                    <>
-                      <MetricCard icon={Activity}     title="Total Runs"    value={data.runStats.totalRuns} />
-                      <MetricCard icon={CheckCircle2} title="Successful"    value={data.runStats.completedRuns}
-                        subtitle={`${data.runStats.successRate.toFixed(1)}% rate`} />
-                      <MetricCard icon={XCircle}      title="Failed"        value={data.runStats.failedRuns} />
-                      <MetricCard icon={TrendingUp}   title="Success Rate"  value={`${data.runStats.successRate.toFixed(1)}%`} />
-                      <MetricCard icon={Clock}        title="Avg Duration"  value={fmtMs(data.runStats.avgDurationMs)} />
-                      <MetricCard icon={TrendingDown} title="Min Duration"  value={fmtMs(data.runStats.minDurationMs)} />
-                      <MetricCard icon={TrendingUp}   title="Max Duration"  value={fmtMs(data.runStats.maxDurationMs)} />
-                      <MetricCard icon={Activity}     title="Analysed Runs" value={data.analysedRuns} />
-                    </>
-                  )
-                }
+                      <>
+                        <MetricCard
+                          icon={Activity}
+                          title="Total Runs"
+                          value={data.runStats.totalRuns}
+                        />
+                        <MetricCard
+                          icon={CheckCircle2}
+                          title="Successful"
+                          value={data.runStats.completedRuns}
+                          subtitle={`${data.runStats.successRate.toFixed(1)}% rate`}
+                        />
+                        <MetricCard
+                          icon={XCircle}
+                          title="Failed"
+                          value={data.runStats.failedRuns}
+                        />
+                        <MetricCard
+                          icon={TrendingUp}
+                          title="Success Rate"
+                          value={`${data.runStats.successRate.toFixed(1)}%`}
+                        />
+                        <MetricCard
+                          icon={Clock}
+                          title="Avg Duration"
+                          value={fmtMs(data.runStats.avgDurationMs)}
+                        />
+                        <MetricCard
+                          icon={TrendingDown}
+                          title="Min Duration"
+                          value={fmtMs(data.runStats.minDurationMs)}
+                        />
+                        <MetricCard
+                          icon={TrendingUp}
+                          title="Max Duration"
+                          value={fmtMs(data.runStats.maxDurationMs)}
+                        />
+                        <MetricCard
+                          icon={Activity}
+                          title="Analysed Runs"
+                          value={data.analysedRuns}
+                        />
+                      </>
+                    )}
               </div>
             </div>
 
@@ -424,12 +504,17 @@ export default function WorkflowInsightsPage() {
               <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4 flex items-center gap-2">
                 <Zap className="size-4" /> Step Performance Analytics
               </h2>
-              {loading
-                ? <TableSkeleton rows={5} columns={6} />
-                : (data?.stepStats?.length ?? 0) === 0
-                ? <EmptyState icon={Zap} title="No step data" description="No step results recorded yet for this workflow." />
-                : <StepPerformanceSection steps={data!.stepStats} />
-              }
+              {loading ? (
+                <TableSkeleton rows={5} columns={6} />
+              ) : (data?.stepStats?.length ?? 0) === 0 ? (
+                <EmptyState
+                  icon={Zap}
+                  title="No step data"
+                  description="No step results recorded yet for this workflow."
+                />
+              ) : (
+                <StepPerformanceSection steps={data!.stepStats} />
+              )}
             </section>
 
             {/* Branch Analytics */}
@@ -438,15 +523,18 @@ export default function WorkflowInsightsPage() {
                 <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4 flex items-center gap-2">
                   <GitBranch className="size-4" /> Branch Analytics
                 </h2>
-                {loading
-                  ? <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <CardSkeleton className="h-52" />
-                      <CardSkeleton className="h-52" />
-                    </div>
-                  : <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {data!.branchRouting.map((b) => <BranchCard key={b.stepId} branch={b} />)}
-                    </div>
-                }
+                {loading ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <CardSkeleton className="h-52" />
+                    <CardSkeleton className="h-52" />
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {data!.branchRouting.map((b) => (
+                      <BranchCard key={b.stepId} branch={b} />
+                    ))}
+                  </div>
+                )}
               </section>
             )}
 
@@ -467,15 +555,23 @@ export default function WorkflowInsightsPage() {
                       <MemoryStick className="size-4 text-violet-500" /> Semantic Memory
                     </div>
                     <div className="space-y-2 text-sm">
-                      <DataRow label="Samples analysed" value={data?.semanticMetrics?.memory?.sampleCount ?? 0} />
+                      <DataRow
+                        label="Samples analysed"
+                        value={data?.semanticMetrics?.memory?.sampleCount ?? 0}
+                      />
                       <DataRow
                         label="Avg similarity"
                         value={data?.semanticMetrics?.memory?.avgSimilarity?.toFixed(3) ?? '—'}
-                        highlight={data?.semanticMetrics?.memory?.lowRelevance ? 'text-amber-500' : 'text-emerald-500'}
+                        highlight={
+                          data?.semanticMetrics?.memory?.lowRelevance
+                            ? 'text-amber-500'
+                            : 'text-emerald-500'
+                        }
                       />
                       {data?.semanticMetrics?.memory?.lowRelevance && (
                         <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-500/10 rounded-lg px-3 py-2">
-                          ⚠ Avg {data.semanticMetrics.memory.avgSimilarity.toFixed(3)} — memories appear weakly relevant.
+                          ⚠ Avg {data.semanticMetrics.memory.avgSimilarity.toFixed(3)} — memories
+                          appear weakly relevant.
                         </p>
                       )}
                     </div>
@@ -485,15 +581,23 @@ export default function WorkflowInsightsPage() {
                       <Activity className="size-4 text-sky-500" /> Document RAG
                     </div>
                     <div className="space-y-2 text-sm">
-                      <DataRow label="Samples analysed" value={data?.semanticMetrics?.rag?.sampleCount ?? 0} />
+                      <DataRow
+                        label="Samples analysed"
+                        value={data?.semanticMetrics?.rag?.sampleCount ?? 0}
+                      />
                       <DataRow
                         label="Avg similarity"
                         value={data?.semanticMetrics?.rag?.avgSimilarity?.toFixed(3) ?? '—'}
-                        highlight={data?.semanticMetrics?.rag?.lowRelevance ? 'text-amber-500' : 'text-emerald-500'}
+                        highlight={
+                          data?.semanticMetrics?.rag?.lowRelevance
+                            ? 'text-amber-500'
+                            : 'text-emerald-500'
+                        }
                       />
                       {data?.semanticMetrics?.rag?.lowRelevance && (
                         <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-500/10 rounded-lg px-3 py-2">
-                          ⚠ Avg {data.semanticMetrics.rag.avgSimilarity.toFixed(3)} — low RAG relevance.
+                          ⚠ Avg {data.semanticMetrics.rag.avgSimilarity.toFixed(3)} — low RAG
+                          relevance.
                         </p>
                       )}
                     </div>
@@ -510,9 +614,12 @@ export default function WorkflowInsightsPage() {
                 </h2>
                 <div className="space-y-3">
                   {loading
-                    ? Array.from({ length: 2 }).map((_, i) => <CardSkeleton key={i} className="h-16" />)
-                    : data?.recommendations?.map((rec, i) => <RecommendationCard key={i} rec={rec} />)
-                  }
+                    ? Array.from({ length: 2 }).map((_, i) => (
+                        <CardSkeleton key={i} className="h-16" />
+                      ))
+                    : data?.recommendations?.map((rec, i) => (
+                        <RecommendationCard key={i} rec={rec} />
+                      ))}
                 </div>
               </section>
             )}
@@ -523,7 +630,15 @@ export default function WorkflowInsightsPage() {
   );
 }
 
-function DataRow({ label, value, highlight }: { label: string; value: string | number; highlight?: string }) {
+function DataRow({
+  label,
+  value,
+  highlight,
+}: {
+  label: string;
+  value: string | number;
+  highlight?: string;
+}) {
   return (
     <div className="flex items-center justify-between">
       <span className="text-muted-foreground">{label}</span>

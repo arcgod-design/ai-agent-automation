@@ -15,14 +15,7 @@ import {
   Zap,
   CheckCircle2,
 } from 'lucide-react';
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Cell,
-} from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell } from 'recharts';
 
 import { AuthenticatedLayout } from '@/components/layout/authenticated-layout';
 import { PageContainer } from '@/components/layout/page-container';
@@ -104,12 +97,27 @@ function HealthGauge({ score }: { score: number | null }) {
     <div className="flex flex-col items-center gap-2">
       <div className="relative w-36 h-36">
         <svg className="w-36 h-36 -rotate-90" viewBox="0 0 120 120">
-          <circle cx="60" cy="60" r="54" fill="none" stroke="currentColor"
-            className="text-muted/20" strokeWidth="10" />
-          <circle cx="60" cy="60" r="54" fill="none" stroke="currentColor"
+          <circle
+            cx="60"
+            cy="60"
+            r="54"
+            fill="none"
+            stroke="currentColor"
+            className="text-muted/20"
+            strokeWidth="10"
+          />
+          <circle
+            cx="60"
+            cy="60"
+            r="54"
+            fill="none"
+            stroke="currentColor"
             className={cn(color, 'transition-all duration-700')}
-            strokeWidth="10" strokeLinecap="round"
-            strokeDasharray={circumference} strokeDashoffset={offset} />
+            strokeWidth="10"
+            strokeLinecap="round"
+            strokeDasharray={circumference}
+            strokeDashoffset={offset}
+          />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span className={cn('text-3xl font-bold tabular-nums', color)}>
@@ -155,9 +163,7 @@ function WorkflowSummaryRow({ wf }: { wf: WorkflowSummary }) {
         <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
           <Activity className="size-4 text-primary" />
         </div>
-        <span className="text-sm font-medium truncate font-mono">
-          {wf.workflowId.slice(-8)}…
-        </span>
+        <span className="text-sm font-medium truncate font-mono">{wf.workflowId.slice(-8)}…</span>
       </div>
       <div className="flex items-center gap-6 text-sm tabular-nums">
         <span className="text-muted-foreground">{wf.totalRuns} runs</span>
@@ -216,7 +222,6 @@ export default function InsightsSummaryPage() {
         {/* Content */}
         {(loading || (data && !data.message)) && (
           <div className="space-y-8">
-
             {/* ── Section 1: Health + KPIs ── */}
             <section>
               <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4 flex items-center gap-2">
@@ -225,67 +230,63 @@ export default function InsightsSummaryPage() {
               <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
                 {/* Health gauge */}
                 <Card className="col-span-1 flex flex-col items-center justify-center py-6 px-4 border-border/20 bg-gradient-to-br from-card/40 to-card/20">
-                  {loading
-                    ? <CardSkeleton className="w-full h-40 border-0 shadow-none bg-transparent" />
-                    : (
-                      <>
-                        <HealthGauge score={data?.healthScore ?? null} />
-                        <p className="text-xs text-muted-foreground mt-3">Overall Health Score</p>
-                      </>
-                    )}
+                  {loading ? (
+                    <CardSkeleton className="w-full h-40 border-0 shadow-none bg-transparent" />
+                  ) : (
+                    <>
+                      <HealthGauge score={data?.healthScore ?? null} />
+                      <p className="text-xs text-muted-foreground mt-3">Overall Health Score</p>
+                    </>
+                  )}
                 </Card>
 
                 {/* KPIs — using shared MetricCard */}
                 <div className="col-span-1 lg:col-span-3 grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {loading
-                    ? Array.from({ length: 6 }).map((_, i) => <MetricCardSkeleton key={i} />)
-                    : (
-                      <>
-                        <MetricCard
-                          icon={Activity}
-                          title="Total Runs"
-                          value={data?.analysedRuns ?? 0}
-                        />
-                        <MetricCard
-                          icon={CheckCircle2}
-                          title="Success Rate"
-                          value={`${data?.overallSuccessRate?.toFixed(1) ?? 0}%`}
-                          subtitle={
-                            (data?.overallSuccessRate ?? 0) >= 80
-                              ? 'On track'
-                              : 'Needs attention'
-                          }
-                        />
-                        <MetricCard
-                          icon={GitBranch}
-                          title="Workflows"
-                          value={data?.workflowSummaries?.length ?? 0}
-                          subtitle="tracked"
-                        />
-                        <MetricCard
-                          icon={Zap}
-                          title="Step Types"
-                          value={data?.stepStats?.length ?? 0}
-                          subtitle="unique steps"
-                        />
-                        <MetricCard
-                          icon={Lightbulb}
-                          title="Recommendations"
-                          value={data?.recommendations?.length ?? 0}
-                          subtitle="action items"
-                        />
-                        <MetricCard
-                          icon={MemoryStick}
-                          title="Avg Memory Sim."
-                          value={data?.semanticMetrics?.memory?.avgSimilarity?.toFixed(3) ?? '—'}
-                          subtitle={
-                            data?.semanticMetrics?.memory?.lowRelevance
-                              ? '⚠ Low relevance'
-                              : '✓ Good'
-                          }
-                        />
-                      </>
-                    )}
+                  {loading ? (
+                    Array.from({ length: 6 }).map((_, i) => <MetricCardSkeleton key={i} />)
+                  ) : (
+                    <>
+                      <MetricCard
+                        icon={Activity}
+                        title="Total Runs"
+                        value={data?.analysedRuns ?? 0}
+                      />
+                      <MetricCard
+                        icon={CheckCircle2}
+                        title="Success Rate"
+                        value={`${data?.overallSuccessRate?.toFixed(1) ?? 0}%`}
+                        subtitle={
+                          (data?.overallSuccessRate ?? 0) >= 80 ? 'On track' : 'Needs attention'
+                        }
+                      />
+                      <MetricCard
+                        icon={GitBranch}
+                        title="Workflows"
+                        value={data?.workflowSummaries?.length ?? 0}
+                        subtitle="tracked"
+                      />
+                      <MetricCard
+                        icon={Zap}
+                        title="Step Types"
+                        value={data?.stepStats?.length ?? 0}
+                        subtitle="unique steps"
+                      />
+                      <MetricCard
+                        icon={Lightbulb}
+                        title="Recommendations"
+                        value={data?.recommendations?.length ?? 0}
+                        subtitle="action items"
+                      />
+                      <MetricCard
+                        icon={MemoryStick}
+                        title="Avg Memory Sim."
+                        value={data?.semanticMetrics?.memory?.avgSimilarity?.toFixed(3) ?? '—'}
+                        subtitle={
+                          data?.semanticMetrics?.memory?.lowRelevance ? '⚠ Low relevance' : '✓ Good'
+                        }
+                      />
+                    </>
+                  )}
                 </div>
               </div>
             </section>
@@ -304,25 +305,35 @@ export default function InsightsSummaryPage() {
                   </p>
                 ) : (
                   <ChartContainer config={stepChartConfig} className="h-[220px] w-full">
-                    <BarChart data={stepChartData} margin={{ top: 4, right: 8, left: -10, bottom: 0 }}>
+                    <BarChart
+                      data={stepChartData}
+                      margin={{ top: 4, right: 8, left: -10, bottom: 0 }}
+                    >
                       <CartesianGrid strokeDasharray="3 3" className="stroke-border/20" />
-                      <XAxis dataKey="name"
+                      <XAxis
+                        dataKey="name"
                         tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
-                        axisLine={false} tickLine={false} />
+                        axisLine={false}
+                        tickLine={false}
+                      />
                       <YAxis
                         tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
-                        axisLine={false} tickLine={false}
-                        domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
+                        axisLine={false}
+                        tickLine={false}
+                        domain={[0, 100]}
+                        tickFormatter={(v) => `${v}%`}
+                      />
                       <ChartTooltip content={<ChartTooltipContent />} />
                       <Bar dataKey="successRate" radius={[4, 4, 0, 0]} maxBarSize={40}>
                         {stepChartData.map((entry) => (
-                          <Cell key={entry.name}
+                          <Cell
+                            key={entry.name}
                             fill={
                               entry.successRate >= 80
                                 ? 'oklch(0.72 0.19 160)'
                                 : entry.successRate >= 60
-                                ? 'oklch(0.78 0.19 80)'
-                                : 'oklch(0.65 0.25 25)'
+                                  ? 'oklch(0.78 0.19 80)'
+                                  : 'oklch(0.65 0.25 25)'
                             }
                           />
                         ))}
@@ -339,15 +350,15 @@ export default function InsightsSummaryPage() {
                 <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4 flex items-center gap-2">
                   <GitBranch className="size-4" /> Workflow Summaries
                 </h2>
-                {loading
-                  ? <ListSkeleton rows={3} />
-                  : (
-                    <div className="space-y-2">
-                      {data?.workflowSummaries?.map((wf) => (
-                        <WorkflowSummaryRow key={wf.workflowId} wf={wf} />
-                      ))}
-                    </div>
-                  )}
+                {loading ? (
+                  <ListSkeleton rows={3} />
+                ) : (
+                  <div className="space-y-2">
+                    {data?.workflowSummaries?.map((wf) => (
+                      <WorkflowSummaryRow key={wf.workflowId} wf={wf} />
+                    ))}
+                  </div>
+                )}
               </section>
             )}
 
@@ -371,15 +382,23 @@ export default function InsightsSummaryPage() {
                         Semantic Memory
                       </div>
                       <div className="space-y-2 text-sm">
-                        <DataRow label="Samples analysed" value={data?.semanticMetrics?.memory?.sampleCount ?? 0} />
+                        <DataRow
+                          label="Samples analysed"
+                          value={data?.semanticMetrics?.memory?.sampleCount ?? 0}
+                        />
                         <DataRow
                           label="Avg similarity"
                           value={data?.semanticMetrics?.memory?.avgSimilarity?.toFixed(3) ?? '—'}
-                          highlight={data?.semanticMetrics?.memory?.lowRelevance ? 'text-amber-500' : 'text-emerald-500'}
+                          highlight={
+                            data?.semanticMetrics?.memory?.lowRelevance
+                              ? 'text-amber-500'
+                              : 'text-emerald-500'
+                          }
                         />
                         {data?.semanticMetrics?.memory?.lowRelevance && (
                           <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-500/10 rounded-lg px-3 py-2 mt-1">
-                            ⚠ Memories appear weakly relevant. Consider pruning or retuning embeddings.
+                            ⚠ Memories appear weakly relevant. Consider pruning or retuning
+                            embeddings.
                           </p>
                         )}
                       </div>
@@ -392,15 +411,23 @@ export default function InsightsSummaryPage() {
                         Document RAG
                       </div>
                       <div className="space-y-2 text-sm">
-                        <DataRow label="Samples analysed" value={data?.semanticMetrics?.rag?.sampleCount ?? 0} />
+                        <DataRow
+                          label="Samples analysed"
+                          value={data?.semanticMetrics?.rag?.sampleCount ?? 0}
+                        />
                         <DataRow
                           label="Avg similarity"
                           value={data?.semanticMetrics?.rag?.avgSimilarity?.toFixed(3) ?? '—'}
-                          highlight={data?.semanticMetrics?.rag?.lowRelevance ? 'text-amber-500' : 'text-emerald-500'}
+                          highlight={
+                            data?.semanticMetrics?.rag?.lowRelevance
+                              ? 'text-amber-500'
+                              : 'text-emerald-500'
+                          }
                         />
                         {data?.semanticMetrics?.rag?.lowRelevance && (
                           <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-500/10 rounded-lg px-3 py-2 mt-1">
-                            ⚠ Low RAG relevance. Try increasing Top-K or improving document chunking.
+                            ⚠ Low RAG relevance. Try increasing Top-K or improving document
+                            chunking.
                           </p>
                         )}
                       </div>
@@ -418,7 +445,9 @@ export default function InsightsSummaryPage() {
                 </h2>
                 <div className="space-y-3">
                   {loading
-                    ? Array.from({ length: 2 }).map((_, i) => <CardSkeleton key={i} className="h-16" />)
+                    ? Array.from({ length: 2 }).map((_, i) => (
+                        <CardSkeleton key={i} className="h-16" />
+                      ))
                     : data?.recommendations?.map((rec, i) => (
                         <RecommendationCard key={i} rec={rec} />
                       ))}
@@ -433,8 +462,14 @@ export default function InsightsSummaryPage() {
 }
 
 function DataRow({
-  label, value, highlight,
-}: { label: string; value: string | number; highlight?: string }) {
+  label,
+  value,
+  highlight,
+}: {
+  label: string;
+  value: string | number;
+  highlight?: string;
+}) {
   return (
     <div className="flex items-center justify-between">
       <span className="text-muted-foreground">{label}</span>
