@@ -3,6 +3,8 @@ const AgentTeam = require('../models/agentTeam.model');
 const AgentSession = require('../models/agentSession.model');
 const MessageLog = require('../models/messageLog.model');
 const Agent = require('../models/agent.model');
+const broker = require('../agents/eventBroker');
+const socketUtil = require('../utils/socket');
 
 async function createTeam(req, res) {
   try {
@@ -120,10 +122,65 @@ async function getDiscovery(req, res) {
   }
 }
 
+async function runTeam(req, res) {
+  try {
+    const { input } = req.body;
+    const teamId = req.params.id;
+
+    const team = await AgentTeam.findOne({ _id: teamId, userId: req.user._id });
+    if (!team) return res.status(404).json({ ok: false, error: 'team_not_found' });
+
+    const session = await AgentSession.create({
+      teamId: team._id,
+      userId: req.user._id,
+      objective: input,
+      status: 'active',
+      sharedState: {}
+    });
+
+    res.json({ ok: true, sessionId: session._id, workflowId: teamId });
+
+    const triggerSwarm = async () => {
+      try {
+        const msg = await MessageLog.create({
+          sessionId: session._id,
+          teamId: team._id,
+          from: { id: 'user', type: 'external' },
+          to: { id: 'broadcast', type: 'internal' },
+          type: 'user_prompt',
+          content: { result: input },
+          status: 'delivered'
+        });
+
+        broker.emit('NEW_SWARM_MESSAGE', msg._id);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    const io = socketUtil.getIO();
+    const room = io.sockets.adapter.rooms.get(`war_room_${teamId}`);
+
+    if (room && room.size > 0) {
+      triggerSwarm();
+    } else {
+      const syncEvent = `joined_${teamId}`;
+      global.socketSync.once(syncEvent, triggerSwarm);
+      
+      setTimeout(() => {
+        global.socketSync.removeListener(syncEvent, triggerSwarm);
+      }, 10000);
+    }
+  } catch (error) {
+    res.status(500).json({ ok: false, error: 'server_error' });
+  }
+}
+
 module.exports = {
   createTeam,
   getTeams,
   createSession,
   getSessionLogs,
   getDiscovery,
+  runTeam
 };

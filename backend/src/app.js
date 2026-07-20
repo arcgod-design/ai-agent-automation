@@ -59,52 +59,6 @@ const mongoose = require('mongoose');
 const EventEmitter = require('events');
 global.socketSync = global.socketSync || new EventEmitter();
 
-app.post('/api/agent-teams/:id/run', async (req, res) => {
-  try {
-    const { input } = req.body;
-    const db = mongoose.connection.db;
-    const workflow = await db.collection('workflows').findOne({}, { sort: { _id: -1 } });
-
-    if (!workflow) {
-      return res.status(404).json({ error: 'No workflows found in database.' });
-    }
-
-    const workflowId = workflow._id.toString();
-    res.json({ ok: true, workflowId });
-
-    const triggerExecution = async () => {
-      try {
-        const execUrl = `http://localhost:${process.env.PORT || 5001}/api/workflows/${workflowId}/run`;
-        await fetch(execUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: req.headers.authorization || '',
-          },
-          body: JSON.stringify({ triggerSource: 'war_room', prompt: input }),
-        });
-      } catch (err) {}
-    };
-
-    const socketUtil = require('./utils/socket');
-    const io = socketUtil.getIO();
-    const room = io.sockets.adapter.rooms.get(`war_room_${workflowId}`);
-
-    if (room && room.size > 0) {
-      triggerExecution();
-    } else {
-      const syncEvent = `joined_${workflowId}`;
-      global.socketSync.once(syncEvent, triggerExecution);
-
-      setTimeout(() => {
-        global.socketSync.removeListener(syncEvent, triggerExecution);
-      }, 10000);
-    }
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
 // apply rate limiting middleware to routes
 app.use('/webhook', webhookLimiter);
 
